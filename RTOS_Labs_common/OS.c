@@ -26,6 +26,9 @@
 #include "../RTOS_Labs_common/UART0int.h"
 #include "../RTOS_Labs_common/eFile.h"
 
+void StartOS(void);
+void ContextSwitch(void);
+
 /*code written by weilin */
 #define NUMTHREADS 3 // maximum number of threads
 #define STACKSIZE 100 // number of 32-bit words in stack
@@ -38,13 +41,16 @@ struct tcb{
 	int priority;
 	int is_sleep;
 	int is_block;
-	int is_free;
 	int index;
 };
 typedef struct tcb tcbType;
 tcbType tcbs[NUMTHREADS];
 tcbType *RunPt;
 int32_t Stacks[NUMTHREADS][STACKSIZE];
+
+// Thread Tracking
+uint32_t ThreadCount = 0;
+uint32_t ThreadId = 0;
 
 
 // Performance Measurements 
@@ -86,13 +92,13 @@ void SysTick_Init(unsigned long period){
  * @brief  Initialize OS
  */
 void OS_Init(void){
-  // put Lab 2 (and beyond) solution here
 	DisableInterrupts();
 	PLL_Init(Bus80MHz);
-	for(int i=0; i < NUMTHREADS; i++)//free all allocated tcb free
+	for(int i=0; i < NUMTHREADS; i++) //free all allocated tcb free
 	{
-		tcbs[i].is_free=1;
-		tcbs[i].index=i;
+		tcbs[i].next = NULL;
+		tcbs[i].tid = -1;
+		tcbs[i].index = i;
 	}
 }; 
 
@@ -166,13 +172,11 @@ void SetInitialStack(int i){
 	Stacks[i][STACKSIZE-16] = 0x04040404; // R4
 }
 
-tcbType* tcb_alloc()
-{
-	for(int i =0; i < NUMTHREADS; i++)
-	{
-		if(tcbs[i].is_free==1)
-		{
-			tcbs[i].is_free=0;
+tcbType* tcb_alloc(){
+	for(int i = 0; i < NUMTHREADS; i++){
+		if(tcbs[i].tid == -1){
+			tcbs[i].tid = ThreadId;
+			ThreadId++;
 			return &tcbs[i];
 		}
 	}
@@ -189,21 +193,28 @@ tcbType* tcb_alloc()
 // In Lab 2, you can ignore both the stackSize and priority fields
 // In Lab 3, you can ignore the stackSize fields
 int OS_AddThread(void(*task)(void), uint32_t stackSize, uint32_t priority){
-	// put Lab 2 (and beyond) solution here
-	int32_t status;
-	status = StartCritical();
+	int32_t status = StartCritical();
 	
-	tcbType * new_tcb=tcb_alloc();
-	//tcbs[0].next = &tcbs[1]; // 0 points to 1
-	//tcbs[1].next = &tcbs[2]; // 1 points to 2
-	//tcbs[2].next = &tcbs[0]; // 2 points to 0
-	SetInitialStack(new_tcb->index); Stacks[new_tcb->index][STACKSIZE-2] = (int32_t)(task); // PC
-	//SetInitialStack(0); Stacks[0][STACKSIZE-2] = (int32_t)(task0); // PC
-	//SetInitialStack(1); Stacks[1][STACKSIZE-2] = (int32_t)(task1); // PC
-	//SetInitialStack(2); Stacks[2][STACKSIZE-2] = (int32_t)(task2); // PC
-	//if(number_of_thread==0)
-		RunPt = &tcbs[new_tcb->index]; // thread 0 will run first
-	//RunPt = &tcbs[0]; // thread 0 will run first
+	tcbType *new_tcb = tcb_alloc(); // Allocates a new TCB for the thread
+	if(!new_tcb){ // If TCB could not be allocated, thread cannot be added.
+		return 0;
+	}
+	
+	SetInitialStack(new_tcb->index); // Initializes TCB stack
+	Stacks[new_tcb->index][STACKSIZE-2] = (int32_t)(task); // Sets PC on TCB stack
+	
+	if(ThreadCount==0){
+		RunPt = &tcbs[new_tcb->index]; // the only existing thread will run
+		tcbs[new_tcb->index].next = new_tcb;
+	} else {
+		tcbType *curr = RunPt;
+		while(curr->next != RunPt){
+			curr = curr->next;
+		}
+		curr->next = new_tcb;
+		new_tcb->next = RunPt;
+	}
+	ThreadCount++;
 	EndCritical(status);
 	return 1; // successful
 
@@ -214,9 +225,7 @@ int OS_AddThread(void(*task)(void), uint32_t stackSize, uint32_t priority){
 // Inputs: none
 // Outputs: Thread ID, number greater than zero 
 uint32_t OS_Id(void){
-  // put Lab 2 (and beyond) solution here
-  
-  return 0; // replace this line with solution
+  return RunPt->tid;
 };
 
 
@@ -326,14 +335,7 @@ void OS_Kill(void){
 // input:  none
 // output: none
 void OS_Suspend(void){
-  // put Lab 2 (and beyond) solution here
-  STCURRENT = 0; // reset counter
-	INTCTRL = 0x04000000; // trigger SysTick
-
-	//for now
-	//save_tcb_info();
-	//switch_to_next_task();
-
+	ContextSwitch();
 };
   
 // ******** OS_Fifo_Init ************
@@ -494,15 +496,12 @@ uint32_t OS_MsTime(void){
 // In Lab 3, you should implement the user-defined TimeSlice field
 // It is ok to limit the range of theTimeSlice to match the 24-bit SysTick
 void OS_Launch(uint32_t theTimeSlice){
-  // put Lab 2 (and beyond) solution here
   STCTRL = 0; // disable SysTick during setup
 	STCURRENT = 0; // any write to current clears it
-	SYSPRI3 =(SYSPRI3&0x00FFFFFF)|0xE0000000; // priority 7
+	SYSPRI3 = (SYSPRI3&0x00FFFFFF)|0xE0000000; // priority 7
 	STRELOAD = theTimeSlice - 1; // reload value
 	STCTRL = 0x00000007; // enable, core clock and interrupt arm
-	StartOS(); // start on the first task
-
-    
+	StartOS(); // start on the first task    
 };
 
 //******** I/O Redirection *************** 
