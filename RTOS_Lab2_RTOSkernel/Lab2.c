@@ -342,7 +342,7 @@ uint32_t Count5;   // number of times thread5 loops
 void Thread1(void){
   Count1 = 0;          
   for(;;){
-    PD0 ^= 0x01;       // heartbeat
+    PF1 ^= 0x02;       // heartbeat
     Count1++;
     OS_Suspend();      // cooperative multitasking
   }
@@ -350,7 +350,7 @@ void Thread1(void){
 void Thread2(void){
   Count2 = 0;          
   for(;;){
-    PD1 ^= 0x02;       // heartbeat
+    PF2 ^= 0x04;       // heartbeat
     Count2++;
     OS_Suspend();      // cooperative multitasking
   }
@@ -358,7 +358,7 @@ void Thread2(void){
 void Thread3(void){
   Count3 = 0;          
   for(;;){
-    PD2 ^= 0x04;       // heartbeat
+    PF3 ^= 0x08;       // heartbeat
     Count3++;
     OS_Suspend();      // cooperative multitasking
   }
@@ -663,5 +663,6 @@ int TestmainFIFO(void){   // TestmainFIFO
 
 //*******************Trampoline for selecting main to execute**********
 int main(void) { 			// main 
-  realmain();
+	LaunchPad_Init();
+  Testmain1();
 }
