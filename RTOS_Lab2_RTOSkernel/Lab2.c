@@ -387,21 +387,21 @@ int Testmain1(void){  // Testmain1
 void Thread1b(void){
   Count1 = 0;          
   for(;;){
-    PD0 ^= 0x01;       // heartbeat
+    PF1 ^= 0x02;       // heartbeat
     Count1++;
   }
 }
 void Thread2b(void){
   Count2 = 0;          
   for(;;){
-    PD1 ^= 0x02;       // heartbeat
+    PF2 ^= 0x04;       // heartbeat
     Count2++;
   }
 }
 void Thread3b(void){
   Count3 = 0;          
   for(;;){
-    PD2 ^= 0x04;       // heartbeat
+    PF3 ^= 0x08;       // heartbeat
     Count3++;
   }
 }
@@ -415,7 +415,6 @@ int Testmain2(void){  // Testmain2
   NumCreated += OS_AddThread(&Thread3b,128,0); 
   // Count1 Count2 Count3 should be equal on average
   // counts are larger than Testmain1
- 
   OS_Launch(TIME_2MS); // doesn't return, interrupts enabled in here
   return 0;            // this never executes
 }
@@ -604,7 +603,7 @@ int Testmain5(void){   // Testmain5
 //                on PD0 to measure context switch time
 void ThreadCS(void){       // only thread running
   while(1){
-    PD0 ^= 0x01;      // debugging profile  
+    PF1 ^= 0x02;      // debugging profile  
   }
 }
 int TestmainCS(void){       // TestmainCS
@@ -664,5 +663,5 @@ int TestmainFIFO(void){   // TestmainFIFO
 //*******************Trampoline for selecting main to execute**********
 int main(void) { 			// main 
 	LaunchPad_Init();
-  Testmain1();
+  Testmain2();
 }
