@@ -65,10 +65,10 @@ uint32_t JitterHistogram[JITTERSIZE]={0,};
   SysTick interrupt happens every 10 ms
   used for preemptive thread switch
  *------------------------------------------------------------------------------*/
-void SysTick_Handler(void) {
+//void SysTick_Handler(void) {
   
   
-} // end SysTick_Handler
+//} // end SysTick_Handler
 
 unsigned long OS_LockScheduler(void){
   // lab 4 might need this for disk formating
@@ -501,6 +501,7 @@ void OS_Launch(uint32_t theTimeSlice){
 	SYSPRI3 = (SYSPRI3&0x00FFFFFF)|0xE0000000; // priority 7
 	STRELOAD = theTimeSlice - 1; // reload value
 	STCTRL = 0x00000007; // enable, core clock and interrupt arm
+	EnableInterrupts();
 	StartOS(); // start on the first task    
 };
 
