@@ -202,12 +202,11 @@ int OS_AddThread(void(*task)(void), uint32_t stackSize, uint32_t priority){
 	if(ThreadCount==0){
 		RunPt = &tcbs[new_tcb->index]; // the only existing thread will run
 		tcbs[new_tcb->index].next = new_tcb;
+		tcbs[new_tcb->index].prev = new_tcb;
 	} else {
-		tcbType *curr = RunPt;
-		while(curr->next != RunPt){
-			curr = curr->next;
-		}
-		curr->next = new_tcb;
+		RunPt->prev->next = new_tcb; // Adjusts TCB pointers to insert the array
+		new_tcb->prev = RunPt->prev;
+		RunPt->prev = new_tcb;
 		new_tcb->next = RunPt;
 	}
 	ThreadCount++;
@@ -309,16 +308,15 @@ void OS_Sleep(uint32_t sleepTime){
 	long sr = StartCritical();
 	RunPt->sleep_count = sleepTime;
 	
-	if(SleepCount == 0){
+	if(SleepCount == 0){ // The first element in the sleep list will point to itself.
 		SleepPt = RunPt;
 		SleepPt->snext = SleepPt;
-	} else {
-		tcbType *curr = SleepPt;
-		while(curr->snext != SleepPt){ // Iterates over the TCB sleep list, and places the new sleeping thread at the back of the list.
-			curr = curr->snext;
-		}
-		curr->snext = RunPt;
+		SleepPt->sprev = SleepPt;
+	} else { // Inserts thread into the tail of the sleep list
+		SleepPt->sprev->snext = RunPt;
 		RunPt->snext = SleepPt;
+		RunPt->sprev = SleepPt->sprev;
+		SleepPt->sprev = RunPt;
 	}
 	
 	SleepCount++;
@@ -338,21 +336,10 @@ void OS_Sleep_Decrement(void){
 	do{
 		sleep_curr->sleep_count--; // Decrement current TCB sleep counter
 		if(sleep_curr->sleep_count == 0){ // If the sleep counter becomes zero, remove from sleep list and add to run list
-			tcbType *run_curr = RunPt;
-			tcbType *sleep_prev = sleep_curr;
-			while(run_curr->next != RunPt){ // Iterate through run list to insert thread at end of list
-				sleep_curr = run_curr->next;
-			}
-			run_curr->next = sleep_curr;
-			sleep_curr->next = RunPt;
-			
-			while(sleep_prev->snext != sleep_curr){ // Iterate through sleep list to find element before the one being removed
-				sleep_prev = sleep_prev->snext;
-			}
-			
-			sleep_prev->snext = sleep_curr->snext;
-			
+			sleep_curr->sprev->snext = sleep_curr->snext; // The previous element's next pt now skips over the thread we are removing.
+			sleep_curr->snext->sprev = sleep_curr->sprev; // The next element's prev pt now skips over the thread we are removing.
 			sleep_curr->snext = NULL;
+			sleep_curr->sprev = NULL;
 			SleepCount--;
 		}
 		sleep_curr = sleep_curr->snext;
@@ -366,18 +353,11 @@ void OS_Sleep_Decrement(void){
 // output: none
 void OS_Kill(void){
   long sr = StartCritical();
-	
-	tcbType *next = RunPt->next;
-	
+		
 	RunPt->tid = -1; // Sets TCB tid to -1 to indicate TCB is available
 	
-	while(next->next != RunPt){ // Iterates through running threads list to find the thread pointing to the current one.
-		next = next->next;
-	}
-	
-	if(RunPt->next != next){ // Removes the thread from the list by making the previous thread point to the next thread.
-		next->next = RunPt->next; // Only occurs if the current thread is not the only thread in the list.
-	}
+	RunPt->prev->next = RunPt->next; // The previous element's next pt now skips over the thread we are removing.
+	RunPt->next->prev = RunPt->prev; // The next element's prev pt now skips over the thread we are removing.
 	
 	ThreadCount--;
 	
@@ -553,7 +533,8 @@ uint32_t OS_MsTime(void){
 // In Lab 3, you should implement the user-defined TimeSlice field
 // It is ok to limit the range of theTimeSlice to match the 24-bit SysTick
 void OS_Launch(uint32_t theTimeSlice){
-  SysTick_Init(theTimeSlice);
+	LaunchPad_Init();
+  //SysTick_Init(theTimeSlice);
 	EnableInterrupts();
 	StartOS(); // start on the first task    
 };
