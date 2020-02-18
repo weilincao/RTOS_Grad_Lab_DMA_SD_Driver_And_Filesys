@@ -307,7 +307,7 @@ int OS_AddSW2Task(void(*task)(void), uint32_t priority){
 // OS_Sleep(0) implements cooperative multitasking
 void OS_Sleep(uint32_t sleepTime){
 	long sr = StartCritical();
-	RunPt->is_sleep = sleepTime;
+	RunPt->sleep_count = sleepTime;
 	
 	if(SleepCount == 0){
 		SleepPt = RunPt;
@@ -320,10 +320,45 @@ void OS_Sleep(uint32_t sleepTime){
 		curr->snext = RunPt;
 		RunPt->snext = SleepPt;
 	}
+	
 	SleepCount++;
+	while(SleepCount == ThreadCount){} // Spin if all threads are sleeping to prevent system crash.
+		
 	EndCritical(sr);
 	OS_Suspend();
 };  
+
+// ******** OS_Sleep_Decrement ************
+// decrement all sleep counters in the sleep queue
+// input:  none
+// output: none
+void OS_Sleep_Decrement(void){
+	tcbType *sleep_curr = SleepPt;
+	
+	do{
+		sleep_curr->sleep_count--; // Decrement current TCB sleep counter
+		if(sleep_curr->sleep_count == 0){ // If the sleep counter becomes zero, remove from sleep list and add to run list
+			tcbType *run_curr = RunPt;
+			tcbType *sleep_prev = sleep_curr;
+			while(run_curr->next != RunPt){ // Iterate through run list to insert thread at end of list
+				sleep_curr = run_curr->next;
+			}
+			run_curr->next = sleep_curr;
+			sleep_curr->next = RunPt;
+			
+			while(sleep_prev->snext != sleep_curr){ // Iterate through sleep list to find element before the one being removed
+				sleep_prev = sleep_prev->snext;
+			}
+			
+			sleep_prev->snext = sleep_curr->snext;
+			
+			sleep_curr->snext = NULL;
+			SleepCount--;
+		}
+		sleep_curr = sleep_curr->snext;
+	} while(sleep_curr != SleepPt);
+	
+}
 
 // ******** OS_Kill ************
 // kill the currently running thread, release its TCB and stack
@@ -343,6 +378,10 @@ void OS_Kill(void){
 	if(RunPt->next != next){ // Removes the thread from the list by making the previous thread point to the next thread.
 		next->next = RunPt->next; // Only occurs if the current thread is not the only thread in the list.
 	}
+	
+	ThreadCount--;
+	
+	while(!ThreadCount){} // Spin if no active foreground threads to prevent system crash.
 	
   EndCritical(sr);   // end of atomic section 
 	OS_Suspend();      // TODO: Consider what happens if OS_Suspend is called when the last thread is killed.

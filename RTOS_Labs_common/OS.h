@@ -40,13 +40,14 @@ typedef struct Sema4 Sema4Type;
  */
 struct tcb{
 	int32_t *sp; // pointer to stack, valid for threads not running
-	struct tcb *next; // linked-list pointer
-	struct tcb *snext; // sleeping linked-list pointer
-	struct tcb* previous; // unused
+	struct tcb *next; // run linked-list next pointer
+	struct tcb *prev; // run linked-list next pointer
+	struct tcb *snext; // sleeping linked-list next pointer
+	struct tcb *sprev; // sleeping linked-list prev pointer
 	int tid; // Indicates a unique thread ID. Set to -1 if TCB is available for allocation.
 	int priority; // Indicates thread priority.
-	int is_sleep; // Indicates if the thread is sleeping or not, and time it has to sleep.
-	int is_block; // Indicates if the thread is blocked or not.
+	int sleep_count; // Indicates if the thread is sleeping or not, and time it has to sleep.
+	// int is_block; // Indicates if the thread is blocked or not.
 	int index; // Indicates which index in the TCB array this TCB corresponds to.
 };
 
