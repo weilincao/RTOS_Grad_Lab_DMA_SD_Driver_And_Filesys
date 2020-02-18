@@ -32,24 +32,16 @@ void ContextSwitch(void);
 /*code written by weilin */
 #define NUMTHREADS 3 // maximum number of threads
 #define STACKSIZE 100 // number of 32-bit words in stack
-struct tcb{
-	int32_t *sp; // pointer to stack, valid for threads not running
-	struct tcb *next; // linked-list pointer
-	
-	struct tcb* previous;
-	int tid;
-	int priority;
-	int is_sleep;
-	int is_block;
-	int index;
-};
+
 typedef struct tcb tcbType;
 tcbType tcbs[NUMTHREADS];
 tcbType *RunPt;
+tcbType *SleepPt;
 int32_t Stacks[NUMTHREADS][STACKSIZE];
 
 // Thread Tracking
 uint32_t ThreadCount = 0;
+uint32_t SleepCount = 0;
 uint32_t ThreadId = 0;
 
 
@@ -80,7 +72,11 @@ void OS_UnLockScheduler(unsigned long previous){
 
 
 void SysTick_Init(unsigned long period){
-  
+  STCTRL = 0; // disable SysTick during setup
+	STCURRENT = 0; // any write to current clears it
+	SYSPRI3 = (SYSPRI3&0x00FFFFFF)|0xE0000000; // priority 7
+	STRELOAD = period - 1; // reload value
+	STCTRL = 0x00000007; // enable, core clock and interrupt arm
 }
 
 /**
@@ -310,9 +306,23 @@ int OS_AddSW2Task(void(*task)(void), uint32_t priority){
 // You are free to select the time resolution for this function
 // OS_Sleep(0) implements cooperative multitasking
 void OS_Sleep(uint32_t sleepTime){
-  // put Lab 2 (and beyond) solution here
-  
-
+	long sr = StartCritical();
+	RunPt->is_sleep = sleepTime;
+	
+	if(SleepCount == 0){
+		SleepPt = RunPt;
+		SleepPt->snext = SleepPt;
+	} else {
+		tcbType *curr = SleepPt;
+		while(curr->snext != SleepPt){ // Iterates over the TCB sleep list, and places the new sleeping thread at the back of the list.
+			curr = curr->snext;
+		}
+		curr->snext = RunPt;
+		RunPt->snext = SleepPt;
+	}
+	SleepCount++;
+	EndCritical(sr);
+	OS_Suspend();
 };  
 
 // ******** OS_Kill ************
@@ -320,11 +330,23 @@ void OS_Sleep(uint32_t sleepTime){
 // input:  none
 // output: none
 void OS_Kill(void){
-  // put Lab 2 (and beyond) solution here
- 
-  EnableInterrupts();   // end of atomic section 
-  for(;;){};        // can not return
-    
+  long sr = StartCritical();
+	
+	tcbType *next = RunPt->next;
+	
+	RunPt->tid = -1; // Sets TCB tid to -1 to indicate TCB is available
+	
+	while(next->next != RunPt){ // Iterates through running threads list to find the thread pointing to the current one.
+		next = next->next;
+	}
+	
+	if(RunPt->next != next){ // Removes the thread from the list by making the previous thread point to the next thread.
+		next->next = RunPt->next; // Only occurs if the current thread is not the only thread in the list.
+	}
+	
+  EndCritical(sr);   // end of atomic section 
+	OS_Suspend();      // TODO: Consider what happens if OS_Suspend is called when the last thread is killed.
+  for(;;){};        // can not return    
 }; 
 
 // ******** OS_Suspend ************
@@ -467,9 +489,7 @@ void TimeIncr(void){
   return;
 }
 
-#include "../inc/Timer0A.h"
 void OS_ClearMsTime(void){
-  // put Lab 1 solution here
   Timer5A_Init(&TimeIncr,80000,0); // 1 ms ,highest priority
   MsTime=0;
 };
@@ -481,9 +501,7 @@ void OS_ClearMsTime(void){
 // You are free to select the time resolution for this function
 // For Labs 2 and beyond, it is ok to make the resolution to match the first call to OS_AddPeriodicThread
 uint32_t OS_MsTime(void){
-
-  // put Lab 1 solution here
-  return MsTime; // replace this line with solution
+	return MsTime;
 };
 
 
@@ -496,11 +514,7 @@ uint32_t OS_MsTime(void){
 // In Lab 3, you should implement the user-defined TimeSlice field
 // It is ok to limit the range of theTimeSlice to match the 24-bit SysTick
 void OS_Launch(uint32_t theTimeSlice){
-  STCTRL = 0; // disable SysTick during setup
-	STCURRENT = 0; // any write to current clears it
-	SYSPRI3 = (SYSPRI3&0x00FFFFFF)|0xE0000000; // priority 7
-	STRELOAD = theTimeSlice - 1; // reload value
-	STCTRL = 0x00000007; // enable, core clock and interrupt arm
+  SysTick_Init(theTimeSlice);
 	EnableInterrupts();
 	StartOS(); // start on the first task    
 };

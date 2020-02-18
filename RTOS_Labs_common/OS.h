@@ -36,6 +36,21 @@ struct  Sema4{
 typedef struct Sema4 Sema4Type;
 
 /**
+ * \brief TCB structure.
+ */
+struct tcb{
+	int32_t *sp; // pointer to stack, valid for threads not running
+	struct tcb *next; // linked-list pointer
+	struct tcb *snext; // sleeping linked-list pointer
+	struct tcb* previous; // unused
+	int tid; // Indicates a unique thread ID. Set to -1 if TCB is available for allocation.
+	int priority; // Indicates thread priority.
+	int is_sleep; // Indicates if the thread is sleeping or not, and time it has to sleep.
+	int is_block; // Indicates if the thread is blocked or not.
+	int index; // Indicates which index in the TCB array this TCB corresponds to.
+};
+
+/**
  * @details  Initialize operating system, disable interrupts until OS_Launch.
  * Initialize OS controlled I/O: serial, ADC, systick, LaunchPad I/O and timers.
  * Interrupts not yet enabled.
