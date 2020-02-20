@@ -102,7 +102,10 @@ void OS_Init(void){
 // input:  pointer to a semaphore
 // output: none
 void OS_InitSemaphore(Sema4Type *semaPt, int32_t value){
-  // put Lab 2 (and beyond) solution here
+  semaPt->Value = value;
+	semaPt->owner = NULL;
+	semaPt->acquire_count = 0;
+	semaPt->blocked_tcbs = NULL;
 
 }; 
 
@@ -141,14 +144,18 @@ void OS_Signal(Sema4Type *semaPt){
 // input:  pointer to a binary semaphore
 // output: none
 void OS_bWait(Sema4Type *semaPt){
-  // put Lab 2 (and beyond) solution here
 	DisableInterrupts();
-	while(semaPt->Value==0){
-		EnableInterrupts();
-		OS_Suspend();
-		DisableInterrupts();
+	if(semaPt->owner != RunPt){ // If a different thread is attempting to acquire the semaphore, wait
+		while(semaPt->Value==0){
+			EnableInterrupts();
+			OS_Suspend();
+			DisableInterrupts();
+		}
+		semaPt->owner = RunPt;
+		semaPt->Value=0;
+	} else { // Increment the hold count to keep track of how many times the same thread has acquired the same semaphore.
+		semaPt->acquire_count++;
 	}
-	semaPt->Value=0;
 	EnableInterrupts();	
 		
 }; 
@@ -160,7 +167,11 @@ void OS_bWait(Sema4Type *semaPt){
 // output: none
 void OS_bSignal(Sema4Type *semaPt){
   // put Lab 2 (and beyond) solution here
-	semaPt->Value=1;
+	semaPt->acquire_count--;
+	if(semaPt->acquire_count == 0){ // Only release the semaphore once all chained bWaits have been paired with a bSignal.
+		semaPt->Value=1;
+		semaPt->owner = NULL;
+	}
 }; 
 
 void SetInitialStack(int i){
