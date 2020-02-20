@@ -903,14 +903,14 @@ void static pushColor(uint16_t color) {
 //        color 16-bit color, which can be produced by ST7735_Color565()
 // Output: none
 void ST7735_DrawPixel(int16_t x, int16_t y, uint16_t color) {
-
+	OS_bWait(&LCDFree);
   if((x < 0) || (x >= _width) || (y < 0) || (y >= _height)) return;
 
 //  setAddrWindow(x,y,x+1,y+1); // original code, bug???
   setAddrWindow(x,y,x,y);
 
   pushColor(color);
-
+	OS_bSignal(&LCDFree);
  // deselect();
 }
 
@@ -1379,7 +1379,9 @@ void ST7735_OutUDec(uint32_t n){
   fillmessage(n);
   Message[Messageindex] = 0; // terminate
   ST7735_DrawString(StX,StY,Message,StTextColor);
+	OS_bWait(&LCDFree);
   StX = StX+Messageindex;
+	OS_bSignal(&LCDFree);
   if(StX>20){
     StX = 20;
     ST7735_DrawCharS(StX*6,StY*10,'*',ST7735_RED,ST7735_BLACK, 1);
@@ -1778,7 +1780,10 @@ void ST7735_PlotNextErase(void){
 // Outputs: none
 void ST7735_OutChar(char ch){
   if((ch == 10) || (ch == 13) || (ch == 27)){
-    StY++; StX=0;
+    OS_bWait(&LCDFree);
+		StY++; //read modified write need mutex
+		OS_bSignal(&LCDFree);
+		StX=0;
     if(StY>15){
       StY = 0;
     }
