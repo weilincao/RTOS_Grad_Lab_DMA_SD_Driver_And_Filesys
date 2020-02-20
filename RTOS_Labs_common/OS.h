@@ -50,7 +50,9 @@ typedef struct tcb tcbType;
 struct  Sema4{
   int32_t Value;   // >0 means free, otherwise means busy        
 // add other components here, if necessary to implement blocking
-	tcbType* waiting_tcbs;
+	uint32_t acquire_count; // Count of how many times the same thread has requested the semaphore beyond the first time.
+	tcbType *owner; // Thread that currently owns the semaphore
+	tcbType* blocked_tcbs;
 };
 typedef struct Sema4 Sema4Type;
 
