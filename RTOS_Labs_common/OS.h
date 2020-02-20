@@ -26,14 +26,6 @@
 #define TIME_500US  (TIME_1MS/2)  
 #define TIME_250US  (TIME_1MS/5)  
 
-/**
- * \brief Semaphore structure. Feel free to change the type of semaphore, there are lots of good solutions
- */  
-struct  Sema4{
-  int32_t Value;   // >0 means free, otherwise means busy        
-// add other components here, if necessary to implement blocking
-};
-typedef struct Sema4 Sema4Type;
 
 /**
  * \brief TCB structure.
@@ -50,6 +42,20 @@ struct tcb{
 	// int is_block; // Indicates if the thread is blocked or not.
 	int index; // Indicates which index in the TCB array this TCB corresponds to.
 };
+typedef struct tcb tcbType;
+
+/**
+ * \brief Semaphore structure. Feel free to change the type of semaphore, there are lots of good solutions
+ */  
+struct  Sema4{
+  int32_t Value;   // >0 means free, otherwise means busy        
+// add other components here, if necessary to implement blocking
+	tcbType* waiting_tcbs;
+};
+typedef struct Sema4 Sema4Type;
+
+
+
 
 /**
  * @details  Initialize operating system, disable interrupts until OS_Launch.
