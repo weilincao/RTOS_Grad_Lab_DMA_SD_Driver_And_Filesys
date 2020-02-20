@@ -930,12 +930,15 @@ void ST7735_DrawFastVLine(int16_t x, int16_t y, int16_t h, uint16_t color) {
   // Rudimentary clipping
   if((x >= _width) || (y >= _height)) return;
   if((y+h-1) >= _height) h = _height-y;
+	OS_bWait(&LCDFree);
   setAddrWindow(x, y, x, y+h-1);
 
   while (h--) {
     writedata(hi);
     writedata(lo);
   }
+	
+	OS_bSignal(&LCDFree);
 
  // deselect();
 }
@@ -956,12 +959,15 @@ void ST7735_DrawFastHLine(int16_t x, int16_t y, int16_t w, uint16_t color) {
   // Rudimentary clipping
   if((x >= _width) || (y >= _height)) return;
   if((x+w-1) >= _width)  w = _width-x;
+	OS_bWait(&LCDFree);
   setAddrWindow(x, y, x+w-1, y);
 
   while (w--) {
     writedata(hi);
     writedata(lo);
   }
+	
+	OS_bSignal(&LCDFree);
 
  // deselect();
 }
@@ -994,7 +1000,7 @@ void ST7735_FillRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color)
   if((x >= _width) || (y >= _height)) return;
   if((x + w - 1) >= _width)  w = _width  - x;
   if((y + h - 1) >= _height) h = _height - y;
-
+	OS_bWait(&LCDFree);
   setAddrWindow(x, y, x+w-1, y+h-1);
 
   for(y=h; y>0; y--) {
@@ -1003,7 +1009,7 @@ void ST7735_FillRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color)
       writedata(lo);
     }
   }
-
+	OS_bSignal(&LCDFree);
  // deselect();
 }
 
@@ -1027,6 +1033,7 @@ void ST7735_DrawSmallCircle(int16_t x, int16_t y, uint16_t color) {
   uint8_t hi = color >> 8, lo = color;
   // rudimentary clipping 
   if((x>_width-5)||(y>_height-5)) return; // doesn't fit
+	OS_bWait(&LCDFree);
   for(i=0; i<6; i++){
     setAddrWindow(x+smallCircle[i][0], y+i, x+smallCircle[i][1], y+i);
     w = smallCircle[i][2];
@@ -1035,6 +1042,7 @@ void ST7735_DrawSmallCircle(int16_t x, int16_t y, uint16_t color) {
       writedata(lo);
     }
   }
+	OS_bSignal(&LCDFree);
  // deselect();
 }
 //------------ST7735_DrawCircle------------
@@ -1061,6 +1069,7 @@ void ST7735_DrawCircle(int16_t x, int16_t y, uint16_t color) {
   uint8_t hi = color >> 8, lo = color;
   // rudimentary clipping 
   if((x>_width-9)||(y>_height-9)) return; // doesn't fit
+	OS_bWait(&LCDFree);
   for(i=0; i<10; i++){
     setAddrWindow(x+circle[i][0], y+i, x+circle[i][1], y+i);
     w = circle[i][2];
@@ -1069,6 +1078,7 @@ void ST7735_DrawCircle(int16_t x, int16_t y, uint16_t color) {
       writedata(lo);
     }
   }
+	OS_bSignal(&LCDFree);
  // deselect();
 }
 
@@ -1145,7 +1155,7 @@ void ST7735_DrawBitmap(int16_t x, int16_t y, const uint16_t *image, int16_t w, i
     h = h - (y - _height + 1);
     y = _height - 1;
   }
-
+	OS_bWait(&LCDFree);
   setAddrWindow(x, y-h+1, x+w-1, y);
 
   for(y=0; y<h; y=y+1){
@@ -1159,7 +1169,7 @@ void ST7735_DrawBitmap(int16_t x, int16_t y, const uint16_t *image, int16_t w, i
     i = i + skipC;
     i = i - 2*originalWidth;
   }
-
+	OS_bSignal(&LCDFree);
  // deselect();
 }
 
@@ -1405,10 +1415,18 @@ void ST7735_OutUDec2(uint32_t n, uint32_t l){
 //        line    row from top, 0 to 7 for each device
 //        pt      pointer to a null terminated string to be printed
 //        value   signed integer to be printed
-//void ST7735_Message(uint32_t  d, uint32_t  l, char *pt, int32_t value){
-//  // write this as part of Labs 1 and 2
-
-//}
+void ST7735_Message (int device, int line, char *string, int32_t value){
+	ST7735_SetCursor(0, device*7+line); // Sets the cursor to the start of the appropriate line
+  ST7735_OutString("                    "); // clean the line first by outputting 20 spaces
+	ST7735_SetCursor(0, device*7+line);
+  ST7735_OutString(string);
+  if(value<0){ // Controls value output based on sign
+    ST7735_OutChar('-');
+    ST7735_OutUDec(-1*value); 
+  } else{
+    ST7735_OutUDec(value);
+	}
+}
 
 //-----------------------ST7735_OutUDec4-----------------------
 // Output a 32-bit number in unsigned 4-digit decimal format
@@ -1465,7 +1483,7 @@ void ST7735_OutUDec5(uint32_t n){
 // Input: m new rotation value (0 to 3)
 // Output: none
 void ST7735_SetRotation(uint8_t m) {
-
+	OS_bWait(&LCDFree);
   writecommand(ST7735_MADCTL);
   Rotation = m % 4; // can't be higher than 3
   switch (Rotation) {
@@ -1506,7 +1524,7 @@ void ST7735_SetRotation(uint8_t m) {
      _height = ST7735_TFTWIDTH;
      break;
   }
-
+	OS_bSignal(&LCDFree);
 //  deselect();
 }
 
@@ -1517,11 +1535,13 @@ void ST7735_SetRotation(uint8_t m) {
 // Input: i 0 to disable inversion; non-zero to enable inversion
 // Output: none
 void ST7735_InvertDisplay(int i) {
+	OS_bWait(&LCDFree);
   if(i){
     writecommand(ST7735_INVON);
   } else{
     writecommand(ST7735_INVOFF);
-  }  
+  } 
+	OS_bSignal(&LCDFree);
  // deselect();
 }
 // graphics routines
@@ -1832,19 +1852,3 @@ void ST7735_SetTextColor(uint16_t color){
 //}
 //// Abstraction of general output device
 //// Volume 2 section 3.4.5
-
-
-void ST7735_Message (int device, int line, char *string, int32_t value)
-{
-	ST7735_SetCursor(0, device*7+line);
-  ST7735_OutString("                  ");//clean the line first
-	ST7735_SetCursor(0, device*7+line);
-  ST7735_OutString(string);
-  if(value<0)
-  {
-    ST7735_OutChar('-');
-    ST7735_OutUDec(-1*value);//not sure about this
-  }
-  else
-    ST7735_OutUDec(value);//not sure about this
-}
