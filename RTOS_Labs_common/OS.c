@@ -122,7 +122,7 @@ void OS_Wait(Sema4Type *semaPt){
   DisableInterrupts();
 	while(semaPt->Value<=0){
 		EnableInterrupts();
-		OS_Suspend();
+		// OS_Suspend();
 		DisableInterrupts();
 	}
 	semaPt->Value=semaPt->Value-1;
@@ -136,9 +136,9 @@ void OS_Wait(Sema4Type *semaPt){
 // input:  pointer to a counting semaphore
 // output: none
 void OS_Signal(Sema4Type *semaPt){
-	long status= StartCritical();
+	DisableInterrupts();
 	semaPt->Value=semaPt->Value+1;
-	EndCritical(status);
+	EnableInterrupts();
 }; 
 
 // ******** OS_bWait ************
@@ -423,8 +423,10 @@ void OS_Sleep(uint32_t sleepTime){
 // input:  none
 // output: none
 void OS_Sleep_Decrement(void){
+	long sr = StartCritical();
 	tcbType *sleep_curr = SleepPt;
 	if(!SleepPt){ // No sleeping threads, so we should leave.
+		EndCritical(sr);
 		return;
 	}
 	
@@ -441,6 +443,7 @@ void OS_Sleep_Decrement(void){
 			SleepPt = sleep_curr->snext; // Moves the head of the list over to the next element.
 			if(SleepCount == 0){ // If we removed the only element
 				SleepPt = NULL;
+				EndCritical(sr);
 				return;
 			}
 		}
@@ -460,6 +463,7 @@ void OS_Sleep_Decrement(void){
 		}
 		sleep_curr = sleep_curr->snext; // Move to next sleeping thread
 	} 	
+	EndCritical(sr);
 }
 
 // ******** OS_Kill ************
