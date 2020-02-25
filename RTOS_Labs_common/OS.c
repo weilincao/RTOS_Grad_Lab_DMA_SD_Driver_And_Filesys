@@ -15,8 +15,11 @@
 #include "../inc/PLL.h"
 #include "../inc/LaunchPad.h"
 
-#include "../inc/Timer4A.h"
 #include "../inc/Timer5A.h"
+#include "../inc/Timer4A.h"
+#include "../inc/Timer3A.h"
+#include "../inc/Timer2A.h"
+#include "../inc/Timer1A.h"
 #include "../inc/Timer0A.h"
 
 #include "../inc/WTimer0A.h"
@@ -280,12 +283,30 @@ tcbType* OS_Schedule(void){
 // In lab 3, this command will be called 0 1 or 2 times
 // In lab 3, there will be up to four background threads, and this priority field 
 //           determines the relative priority of these four threads
-int OS_AddPeriodicThread(void(*task)(void), 
-   uint32_t period, uint32_t priority){
-  // put Lab 2 (and beyond) solution here
-  
-     
-  return 0; // replace this line with solution
+#define NUMBER_OF_TIMERS 3
+int OS_AddPeriodicThread(void(*task)(void),uint32_t period, uint32_t priority){
+	static int timer_assignment=1;
+	
+	if(timer_assignment>NUMBER_OF_TIMERS)
+		return 0;
+	switch(timer_assignment)
+  {
+		case(1):
+		{
+			Timer1A_Init(task, period, priority);
+			break;
+		}
+		case(2):{
+			Timer2A_Init(task, period, priority);
+			break;
+		}
+		case(3):{
+			Timer3A_Init(task, period, priority);
+			break;
+		}
+	}	
+	timer_assignment++;
+  return 1; // replace this line with solution
 };
 
 void (*SW1task)(void) = NULL;
