@@ -35,7 +35,7 @@ void ContextSwitch(void);
 
 tcbType tcbs[NUMTHREADS];
 tcbType *RunPt;
-tcbType *SleepPt;
+tcbType *SleepPt = NULL;
 int32_t Stacks[NUMTHREADS][STACKSIZE];
 
 // Thread Tracking
@@ -248,6 +248,19 @@ uint32_t OS_Id(void){
   return RunPt->tid;
 };
 
+//******** OS_Schedule *************** 
+// returns the TCB pointer to the thread that will be scheduled next
+// Inputs: none
+// Outputs: TCB pointer
+tcbType* OS_Schedule(void){
+	tcbType *temp = RunPt->next; // Round-robin scheduling
+	if(RunPt->sleep_count){ // If the currently running thread has just been put to sleep, remove it from the active list.
+		RunPt->prev->next = RunPt->next;
+		RunPt->next->prev = RunPt->prev;
+	}
+	return temp;
+}
+
 
 //******** OS_AddPeriodicThread *************** 
 // add a background periodic task
@@ -394,19 +407,42 @@ void OS_Sleep(uint32_t sleepTime){
 // output: none
 void OS_Sleep_Decrement(void){
 	tcbType *sleep_curr = SleepPt;
+	if(!SleepPt){ // No sleeping threads, so we should leave.
+		return;
+	}
 	
-	do{
+	while(sleep_curr == SleepPt){ // Takes care of the case where we end up repeatedly removing the head of the list
+		sleep_curr->sleep_count--;
+		if(sleep_curr->sleep_count == 0){
+			sleep_curr->sprev->snext = sleep_curr->snext; // The previous element's next pt now skips over the thread we are removing.
+			sleep_curr->snext->sprev = sleep_curr->sprev; // The next element's prev pt now skips over the thread we are removing.
+			sleep_curr->next = RunPt; // Updating sleeping thread's active next pointer
+			sleep_curr->prev = RunPt->prev; // Updating sleeping thread's active prev pointer
+			RunPt->prev->next = sleep_curr; // Inserting sleeping thread ahead of the last thread in the active list
+			RunPt->prev = sleep_curr; // Updating active thread's previous pointer to point to the new last thread in the list.
+			SleepCount--; // Decrementing running total of sleeping threads
+			SleepPt = sleep_curr->snext; // Moves the head of the list over to the next element.
+			if(SleepCount == 0){ // If we removed the only element
+				SleepPt = NULL;
+				return;
+			}
+		}
+		sleep_curr = sleep_curr->snext; // Move to next sleeping thread
+	}
+	
+	while(sleep_curr != SleepPt){ // Once we have stopped needing to move the head of the list, we can process the rest of the elements.
 		sleep_curr->sleep_count--; // Decrement current TCB sleep counter
 		if(sleep_curr->sleep_count == 0){ // If the sleep counter becomes zero, remove from sleep list and add to run list
 			sleep_curr->sprev->snext = sleep_curr->snext; // The previous element's next pt now skips over the thread we are removing.
 			sleep_curr->snext->sprev = sleep_curr->sprev; // The next element's prev pt now skips over the thread we are removing.
-			sleep_curr->snext = NULL;
-			sleep_curr->sprev = NULL;
-			SleepCount--;
+			sleep_curr->next = RunPt; // Updating sleeping thread's active next pointer
+			sleep_curr->prev = RunPt->prev; // Updating sleeping thread's active prev pointer
+			RunPt->prev->next = sleep_curr; // Inserting sleeping thread ahead of the last thread in the active list
+			RunPt->prev = sleep_curr; // Updating active thread's previous pointer to point to the new last thread in the list.
+			SleepCount--; // Decrementing running total of sleeping threads.
 		}
-		sleep_curr = sleep_curr->snext;
-	} while(sleep_curr != SleepPt);
-	
+		sleep_curr = sleep_curr->snext; // Move to next sleeping thread
+	} 	
 }
 
 // ******** OS_Kill ************
@@ -450,7 +486,7 @@ static uint32_t OSFIFO[OSFIFOSIZE];
 
 Sema4Type FIFOSize;
 Sema4Type FIFOmutex;
-uint32_t DataLost;
+uint32_t LostCount;
   
 // ******** OS_Fifo_Init ************
 // Initialize the Fifo to be empty
@@ -463,7 +499,7 @@ uint32_t DataLost;
 //    e.g., must be a power of 2,4,8,16,32,64,128
 void OS_Fifo_Init(uint32_t size){
 	OS_Put = OS_Get = &OSFIFO[0];
-	DataLost = 0;
+	LostCount = 0;
 	OS_InitSemaphore(&FIFOSize, 0);
 	OS_InitSemaphore(&FIFOmutex, 1);  
 };
@@ -478,7 +514,7 @@ void OS_Fifo_Init(uint32_t size){
 //  this function can not disable or enable interrupts
 int OS_Fifo_Put(uint32_t data){
   if(FIFOSize.Value == OSFIFOSIZE){ // If FIFO full, data is lost.
-		DataLost++;
+		LostCount++;
 		return -1;
 	}
 	*(OS_Put) = data;
@@ -625,6 +661,7 @@ uint32_t OS_MsTime(void){
 void OS_Launch(uint32_t theTimeSlice){
 	LaunchPad_Init();
   SysTick_Init(theTimeSlice);
+	OS_ClearMsTime();
 	EnableInterrupts();
 	StartOS(); // start on the first task    
 };

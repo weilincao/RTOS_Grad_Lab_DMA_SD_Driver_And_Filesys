@@ -123,6 +123,12 @@ int OS_AddThread(void(*task)(void),
 // Outputs: Thread ID, number greater than zero 
 uint32_t OS_Id(void);
 
+//******** OS_Schedule *************** 
+// returns the TCB pointer to the thread that will be scheduled next
+// Inputs: none
+// Outputs: TCB pointer
+tcbType* OS_Schedule(void);
+
 //******** OS_AddPeriodicThread *************** 
 // add a background periodic task
 // typically this function receives the highest priority
