@@ -33,7 +33,7 @@ void StartOS(void);
 void ContextSwitch(void);
 
 /*code written by weilin */
-#define NUMTHREADS 3 // maximum number of threads
+#define NUMTHREADS 5 // maximum number of threads
 #define STACKSIZE 100 // number of 32-bit words in stack
 
 tcbType tcbs[NUMTHREADS];
@@ -309,12 +309,15 @@ int OS_AddPeriodicThread(void(*task)(void),uint32_t period, uint32_t priority){
   return 1; // replace this line with solution
 };
 
+void (*SW1task)(void) = NULL;
+void (*SW2task)(void) = NULL;
 //******** OS_InitSW1 *************** 
 // initializes PF0 with interrupts enabled
 // Inputs: none
 // Outputs: none
 // Taken from ValvanoWare EdgeInterrupts_4C123
-void OS_InitSW1(void){
+void OS_InitSW1(void (*task)(void), uint32_t priority){
+	SW1task = task;
 	SYSCTL_RCGCGPIO_R |= 0x00000020; // (a) activate clock for port F
   GPIO_PORTF_DIR_R &= ~0x10;    // (b) make PF4 in (built-in button)
   GPIO_PORTF_AFSEL_R &= ~0x10;  //     disable alt funct on PF4
@@ -327,19 +330,23 @@ void OS_InitSW1(void){
   GPIO_PORTF_IEV_R &= ~0x10;    //     PF4 falling edge event
   GPIO_PORTF_ICR_R = 0x10;      // (e) clear flag4
   GPIO_PORTF_IM_R |= 0x10;      // (f) arm interrupt on PF4 *** No IME bit as mentioned in Book ***
-  NVIC_PRI7_R = (NVIC_PRI7_R&0xFF00FFFF)|0x00A00000; // (g) priority 5 (This will likely need to change)
+  NVIC_PRI7_R = (NVIC_PRI7_R&0xFF00FFFF)|0x00A00000; // (g) priority 5 (TODO: CHANGE THIS TO USE priority INPUT!)
   NVIC_EN0_R = 0x40000000;      // (h) enable interrupt 30 in NVIC
 };
 
 /*----------------------------------------------------------------------------
   PF Interrupt Handler
  *----------------------------------------------------------------------------*/
-void (*SW1task)(void) = NULL;
-tcbType *SW1tcb = NULL;
-void (*SW2task)(void) = NULL;
-tcbType *SW2tcb = NULL;
+#define DEBOUNCE_TIME 10
+uint32_t lastTime = 0;
+uint32_t currTime = 0;
 void GPIOPortF_Handler(void){
-	
+	currTime = OS_MsTime();
+	if((currTime - lastTime) > DEBOUNCE_TIME){
+		lastTime = currTime;
+		SW1task();
+	}
+	GPIO_PORTF_ICR_R = 0x10;      // acknowledge SW1
 }
 //******** OS_AddSW1Task *************** 
 // add a background task to run whenever the SW1 (PF4) button is pushed
@@ -355,19 +362,8 @@ void GPIOPortF_Handler(void){
 // In lab 3, there will be up to four background threads, and this priority field 
 //           determines the relative priority of these four threads
 int OS_AddSW1Task(void(*task)(void), uint32_t priority){ 
-	int32_t status = StartCritical(); // IDK what we are supposed to do for this function, we will need to rewrite it...
-	
-	tcbType *new_tcb = tcb_alloc(); // Allocates a new TCB for the thread
-	if(!new_tcb){ // If TCB could not be allocated, thread cannot be added.
-		EndCritical(status);
-		return 0;
-	}
-	
-	SetInitialStack(new_tcb->index); // Initializes TCB stack
-	Stacks[new_tcb->index][STACKSIZE-2] = (int32_t)(task); // Sets PC on TCB stack
-	
-	SW1task = task;
-	
+	int32_t status = StartCritical();
+	OS_InitSW1(task, priority);
 	EndCritical(status);
 	return 1;
 };
