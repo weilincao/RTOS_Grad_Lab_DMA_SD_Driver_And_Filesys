@@ -431,7 +431,7 @@ int Testmain2(void){  // Testmain2
 void Thread1c(void){ int i;
   Count1 = 0;          
   for(i=0;i<=42;i++){
-    PD0 ^= 0x01;       // heartbeat
+    PF1 ^= 0x02;       // heartbeat
     Count1++;
   }
   OS_Kill();
@@ -440,7 +440,7 @@ void Thread1c(void){ int i;
 void Thread2c(void){
   Count2 = 0;          
   for(;;){
-    PD1 ^= 0x02;       // heartbeat
+    PF2 ^= 0x04;       // heartbeat
     Count2++;
     NumCreated += OS_AddThread(&Thread1c,128,0); 
     OS_Sleep(5);
@@ -449,7 +449,7 @@ void Thread2c(void){
 void Thread3c(void){
   Count3 = 0;          
   for(;;){
-    PD2 ^= 0x04;       // heartbeat
+    PF3 ^= 0x08;       // heartbeat
     Count3++;
   }
 }
