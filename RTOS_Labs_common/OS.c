@@ -316,8 +316,15 @@ void OS_InitSW1(void (*task)(void), uint32_t priority){
 /*----------------------------------------------------------------------------
   PF Interrupt Handler
  *----------------------------------------------------------------------------*/
+#define DEBOUNCE_TIME 10
+uint32_t lastTime = 0;
+uint32_t currTime = 0;
 void GPIOPortF_Handler(void){
-	SW1task();
+	currTime = OS_MsTime();
+	if((currTime - lastTime) > DEBOUNCE_TIME){
+		lastTime = currTime;
+		SW1task();
+	}
 	GPIO_PORTF_ICR_R = 0x10;      // acknowledge SW1
 }
 //******** OS_AddSW1Task *************** 
