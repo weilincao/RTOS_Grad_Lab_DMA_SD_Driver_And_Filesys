@@ -166,7 +166,6 @@ void OS_bWait(Sema4Type *semaPt){
 // input:  pointer to a binary semaphore
 // output: none
 void OS_bSignal(Sema4Type *semaPt){
-  // put Lab 2 (and beyond) solution here
 	semaPt->acquire_count--;
 	if(semaPt->acquire_count == 0){ // Only release the semaphore once all chained bWaits have been paired with a bSignal.
 		semaPt->Value=1;
@@ -218,6 +217,7 @@ int OS_AddThread(void(*task)(void), uint32_t stackSize, uint32_t priority){
 	
 	tcbType *new_tcb = tcb_alloc(); // Allocates a new TCB for the thread
 	if(!new_tcb){ // If TCB could not be allocated, thread cannot be added.
+		EndCritical(status);
 		return 0;
 	}
 	
@@ -275,15 +275,37 @@ int OS_AddPeriodicThread(void(*task)(void),
   return 0; // replace this line with solution
 };
 
-
-
-
+//******** OS_InitSW1 *************** 
+// initializes PF0 with interrupts enabled
+// Inputs: none
+// Outputs: none
+// Taken from ValvanoWare EdgeInterrupts_4C123
+void OS_InitSW1(void){
+	SYSCTL_RCGCGPIO_R |= 0x00000020; // (a) activate clock for port F
+  GPIO_PORTF_DIR_R &= ~0x10;    // (b) make PF4 in (built-in button)
+  GPIO_PORTF_AFSEL_R &= ~0x10;  //     disable alt funct on PF4
+  GPIO_PORTF_DEN_R |= 0x10;     //     enable digital I/O on PF4    
+  GPIO_PORTF_PCTL_R &= ~0x000F0000; // configure PF4 as GPIO
+  GPIO_PORTF_AMSEL_R = 0;       //     disable analog functionality on PF
+  GPIO_PORTF_PUR_R |= 0x10;     //     enable weak pull-up on PF4
+  GPIO_PORTF_IS_R &= ~0x10;     // (d) PF4 is edge-sensitive
+  GPIO_PORTF_IBE_R &= ~0x10;    //     PF4 is not both edges
+  GPIO_PORTF_IEV_R &= ~0x10;    //     PF4 falling edge event
+  GPIO_PORTF_ICR_R = 0x10;      // (e) clear flag4
+  GPIO_PORTF_IM_R |= 0x10;      // (f) arm interrupt on PF4 *** No IME bit as mentioned in Book ***
+  NVIC_PRI7_R = (NVIC_PRI7_R&0xFF00FFFF)|0x00A00000; // (g) priority 5 (This will likely need to change)
+  NVIC_EN0_R = 0x40000000;      // (h) enable interrupt 30 in NVIC
+};
 
 /*----------------------------------------------------------------------------
-  PF1 Interrupt Handler
+  PF Interrupt Handler
  *----------------------------------------------------------------------------*/
+void (*SW1task)(void) = NULL;
+tcbType *SW1tcb = NULL;
+void (*SW2task)(void) = NULL;
+tcbType *SW2tcb = NULL;
 void GPIOPortF_Handler(void){
- 
+	
 }
 //******** OS_AddSW1Task *************** 
 // add a background task to run whenever the SW1 (PF4) button is pushed
@@ -298,10 +320,22 @@ void GPIOPortF_Handler(void){
 // In lab 2, the priority field can be ignored
 // In lab 3, there will be up to four background threads, and this priority field 
 //           determines the relative priority of these four threads
-int OS_AddSW1Task(void(*task)(void), uint32_t priority){
-  // put Lab 2 (and beyond) solution here
- 
-  return 0; // replace this line with solution
+int OS_AddSW1Task(void(*task)(void), uint32_t priority){ 
+	int32_t status = StartCritical(); // IDK what we are supposed to do for this function, we will need to rewrite it...
+	
+	tcbType *new_tcb = tcb_alloc(); // Allocates a new TCB for the thread
+	if(!new_tcb){ // If TCB could not be allocated, thread cannot be added.
+		EndCritical(status);
+		return 0;
+	}
+	
+	SetInitialStack(new_tcb->index); // Initializes TCB stack
+	Stacks[new_tcb->index][STACKSIZE-2] = (int32_t)(task); // Sets PC on TCB stack
+	
+	SW1task = task;
+	
+	EndCritical(status);
+	return 1;
 };
 
 //******** OS_AddSW2Task *************** 
@@ -330,6 +364,9 @@ int OS_AddSW2Task(void(*task)(void), uint32_t priority){
 // You are free to select the time resolution for this function
 // OS_Sleep(0) implements cooperative multitasking
 void OS_Sleep(uint32_t sleepTime){
+	if(sleepTime == 0){ 
+		OS_Suspend();
+	}
 	long sr = StartCritical();
 	RunPt->sleep_count = sleepTime;
 	
@@ -403,6 +440,17 @@ void OS_Kill(void){
 void OS_Suspend(void){
 	ContextSwitch();
 };
+
+// FIFO code based on code from pg. 214 of the textbook
+#define OSFIFOSIZE 32
+uint32_t *OS_Put;
+uint32_t *OS_Get;
+
+static uint32_t OSFIFO[OSFIFOSIZE];
+
+Sema4Type FIFOSize;
+Sema4Type FIFOmutex;
+uint32_t DataLost;
   
 // ******** OS_Fifo_Init ************
 // Initialize the Fifo to be empty
@@ -414,9 +462,10 @@ void OS_Suspend(void){
 //    e.g., 4 to 64 elements
 //    e.g., must be a power of 2,4,8,16,32,64,128
 void OS_Fifo_Init(uint32_t size){
-  // put Lab 2 (and beyond) solution here
-   
-  
+	OS_Put = OS_Get = &OSFIFO[0];
+	DataLost = 0;
+	OS_InitSemaphore(&FIFOSize, 0);
+	OS_InitSemaphore(&FIFOmutex, 1);  
 };
 
 // ******** OS_Fifo_Put ************
@@ -428,9 +477,17 @@ void OS_Fifo_Init(uint32_t size){
 // Since this is called by interrupt handlers 
 //  this function can not disable or enable interrupts
 int OS_Fifo_Put(uint32_t data){
-  // put Lab 2 (and beyond) solution here
-
-    return 0; // replace this line with solution
+  if(FIFOSize.Value == OSFIFOSIZE){ // If FIFO full, data is lost.
+		DataLost++;
+		return -1;
+	}
+	*(OS_Put) = data;
+	OS_Put++;
+	if(OS_Put == &OSFIFO[OSFIFOSIZE]){ // Necessary to make the FIFO circular.
+		OS_Put = &OSFIFO[0];
+	}
+	OS_Signal(&FIFOSize);
+	return 0;
 };  
 
 // ******** OS_Fifo_Get ************
@@ -439,9 +496,15 @@ int OS_Fifo_Put(uint32_t data){
 // Inputs:  none
 // Outputs: data 
 uint32_t OS_Fifo_Get(void){
-  // put Lab 2 (and beyond) solution here
-  
-  return 0; // replace this line with solution
+  OS_Wait(&FIFOSize);
+	OS_Wait(&FIFOmutex);
+	uint32_t data = *OS_Get;
+	OS_Get++;
+	if(OS_Get == &OSFIFO[OSFIFOSIZE]){ // Necessary to make the FIFO circular.
+		OS_Get = &OSFIFO[0];
+	}
+	OS_Signal(&FIFOmutex);
+  return data;
 };
 
 // ******** OS_Fifo_Size ************
@@ -452,21 +515,22 @@ uint32_t OS_Fifo_Get(void){
 //          zero or less than zero if the Fifo is empty 
 //          zero or less than zero if a call to OS_Fifo_Get will spin or block
 int32_t OS_Fifo_Size(void){
-  // put Lab 2 (and beyond) solution here
-   
-  return 0; // replace this line with solution
+	return FIFOSize.Value;
 };
 
+// Mailbox code based off of pg. 207 in the textbook
+uint32_t OS_Mail;
+Sema4Type OS_Send;
+Sema4Type OS_Ack;
 
 // ******** OS_MailBox_Init ************
 // Initialize communication channel
 // Inputs:  none
 // Outputs: none
 void OS_MailBox_Init(void){
-  // put Lab 2 (and beyond) solution here
-  
-
-  // put solution here
+  OS_Mail = -1;
+	OS_InitSemaphore(&OS_Send, 0);
+	OS_InitSemaphore(&OS_Ack, 0);
 };
 
 // ******** OS_MailBox_Send ************
@@ -476,10 +540,9 @@ void OS_MailBox_Init(void){
 // This function will be called from a foreground thread
 // It will spin/block if the MailBox contains data not yet received 
 void OS_MailBox_Send(uint32_t data){
-  // put Lab 2 (and beyond) solution here
-  // put solution here
-   
-
+  OS_Mail = data;
+	OS_Signal(&OS_Send);
+	OS_Wait(&OS_Ack);
 };
 
 // ******** OS_MailBox_Recv ************
@@ -489,9 +552,10 @@ void OS_MailBox_Send(uint32_t data){
 // This function will be called from a foreground thread
 // It will spin/block if the MailBox is empty 
 uint32_t OS_MailBox_Recv(void){
-  // put Lab 2 (and beyond) solution here
- 
-  return 0; // replace this line with solution
+	OS_Wait(&OS_Send);
+	uint32_t data = OS_Mail;
+	OS_Signal(&OS_Ack);
+	return data;
 };
 
 // ******** OS_Time ************
@@ -530,6 +594,7 @@ uint32_t MsTime;
 
 void TimeIncr(void){
   MsTime++;
+	OS_Sleep_Decrement();
   return;
 }
 
@@ -559,7 +624,7 @@ uint32_t OS_MsTime(void){
 // It is ok to limit the range of theTimeSlice to match the 24-bit SysTick
 void OS_Launch(uint32_t theTimeSlice){
 	LaunchPad_Init();
-  //SysTick_Init(theTimeSlice);
+  SysTick_Init(theTimeSlice);
 	EnableInterrupts();
 	StartOS(); // start on the first task    
 };
