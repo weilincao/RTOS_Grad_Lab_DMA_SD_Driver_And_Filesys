@@ -103,7 +103,7 @@
         <bEvRecOn>1</bEvRecOn>
         <bSchkAxf>0</bSchkAxf>
         <bTchkAxf>0</bTchkAxf>
-        <nTsel>9</nTsel>
+        <nTsel>19</nTsel>
         <sDll></sDll>
         <sDllPa></sDllPa>
         <sDlgDll></sDlgDll>
@@ -117,6 +117,10 @@
         <pMon>BIN\lmidk-agdi.dll</pMon>
       </DebugOpt>
       <TargetDriverDllRegistry>
+        <SetRegEntry>
+          <Number>0</Number>
+          <Key>DLGUARM</Key>
+        </SetRegEntry>
         <SetRegEntry>
           <Number>0</Number>
           <Key>ARMRTXEVENTFLAGS</Key>
@@ -152,34 +156,18 @@
         <Bp>
           <Number>0</Number>
           <Type>0</Type>
-          <LineNumber>97</LineNumber>
+          <LineNumber>400</LineNumber>
           <EnabledFlag>1</EnabledFlag>
-          <Address>734</Address>
+          <Address>0</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
           <SizeOfObject>0</SizeOfObject>
           <BreakByAccess>0</BreakByAccess>
-          <BreakIfRCount>1</BreakIfRCount>
-          <Filename>..\RTOS_Labs_common\osasm.s</Filename>
+          <BreakIfRCount>0</BreakIfRCount>
+          <Filename>..\RTOS_Labs_common\OS.c</Filename>
           <ExecCommand></ExecCommand>
-          <Expression>\\Lab2\../RTOS_Labs_common/osasm.s\97</Expression>
-        </Bp>
-        <Bp>
-          <Number>1</Number>
-          <Type>0</Type>
-          <LineNumber>110</LineNumber>
-          <EnabledFlag>1</EnabledFlag>
-          <Address>764</Address>
-          <ByteObject>0</ByteObject>
-          <HtxType>0</HtxType>
-          <ManyObjects>0</ManyObjects>
-          <SizeOfObject>0</SizeOfObject>
-          <BreakByAccess>0</BreakByAccess>
-          <BreakIfRCount>1</BreakIfRCount>
-          <Filename>..\RTOS_Labs_common\osasm.s</Filename>
-          <ExecCommand></ExecCommand>
-          <Expression>\\Lab2\../RTOS_Labs_common/osasm.s\110</Expression>
+          <Expression></Expression>
         </Bp>
       </Breakpoint>
       <WatchWindow1>
@@ -212,6 +200,11 @@
           <count>5</count>
           <WinNumber>1</WinNumber>
           <ItemText>Count5</ItemText>
+        </Ww>
+        <Ww>
+          <count>6</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>tcbs</ItemText>
         </Ww>
       </WatchWindow1>
       <WatchWindow2>
@@ -356,7 +349,7 @@
       <GroupNumber>1</GroupNumber>
       <FileNumber>3</FileNumber>
       <FileType>1</FileType>
-      <tvExp>1</tvExp>
+      <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\RTOS_Labs_common\OS.c</PathWithFileName>

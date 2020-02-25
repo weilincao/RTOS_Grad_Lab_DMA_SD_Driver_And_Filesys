@@ -460,7 +460,7 @@ int Testmain3(void){  // Testmain3
   NumCreated = 0 ;
   NumCreated += OS_AddThread(&Thread2c,128,0); 
   NumCreated += OS_AddThread(&Thread3c,128,0); 
-  // Count3 should be larger than Count2, Count1 should be 42
+  // Count3 should be larger than Count2, Count1 should be 42 (no, it should be 43)
  
   OS_Launch(TIME_2MS); // doesn't return, interrupts enabled in here
   return 0;            // this never executes
@@ -531,7 +531,7 @@ int Testmain4(void){   // Testmain4
   return 0;            // this never executes
 }
 
-//*******************Fith TEST**********
+//*******************Fifth TEST**********
 // Once the fourth test runs, run this example (Lab 2 part 2)
 // no UART interrupts
 // SYSTICK interrupts, with or without period established by OS_Launch
@@ -662,5 +662,5 @@ int TestmainFIFO(void){   // TestmainFIFO
 
 //*******************Trampoline for selecting main to execute**********
 int main(void) { 			// main
-  Testmain1();
+  Testmain3();
 }
