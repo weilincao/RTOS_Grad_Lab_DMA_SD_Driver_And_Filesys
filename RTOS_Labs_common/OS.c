@@ -93,6 +93,7 @@ void OS_Init(void){
 	DisableInterrupts();
 	PLL_Init(Bus80MHz);
 	ST7735_InitR(INITR_REDTAB);
+	UART_Init();
 	for(int i=0; i < NUMTHREADS; i++) //free all allocated tcb free
 	{
 		tcbs[i].next = NULL;
@@ -344,7 +345,7 @@ int OS_AddPeriodicThread(void(*task)(void),uint32_t period, uint32_t priority){
 			break;		
 	}	
 	timer_assignment++;
-  return 1; // replace this line with solution
+  return 1;
 };
 
 void (*SW1task)(void) = NULL;
@@ -581,6 +582,7 @@ int OS_Fifo_Put(uint32_t data){
 	if(OS_Put == &OSFIFO[OSFIFOSIZE]){ // Necessary to make the FIFO circular.
 		OS_Put = &OSFIFO[0];
 	}
+
 	OS_Signal(&FIFOSize);
 	return 1;
 };  
@@ -592,13 +594,13 @@ int OS_Fifo_Put(uint32_t data){
 // Outputs: data 
 uint32_t OS_Fifo_Get(void){
   OS_Wait(&FIFOSize);
-	OS_Wait(&FIFOmutex);
+	//OS_Wait(&FIFOmutex);
 	uint32_t data = *OS_Get;
 	OS_Get++;
 	if(OS_Get == &OSFIFO[OSFIFOSIZE]){ // Necessary to make the FIFO circular.
 		OS_Get = &OSFIFO[0];
 	}
-	OS_Signal(&FIFOmutex);
+	//OS_Signal(&FIFOmutex);
   return data;
 };
 
@@ -615,8 +617,8 @@ int32_t OS_Fifo_Size(void){
 
 // Mailbox code based off of pg. 207 in the textbook
 uint32_t OS_Mail;
-Sema4Type OS_Send;
-Sema4Type OS_Ack;
+Sema4Type OS_DataValid;
+Sema4Type OS_BoxEmpty;
 
 // ******** OS_MailBox_Init ************
 // Initialize communication channel
@@ -624,8 +626,8 @@ Sema4Type OS_Ack;
 // Outputs: none
 void OS_MailBox_Init(void){
   OS_Mail = -1;
-	OS_InitSemaphore(&OS_Send, 0);
-	OS_InitSemaphore(&OS_Ack, 0);
+	OS_InitSemaphore(&OS_DataValid, 0);
+	OS_InitSemaphore(&OS_BoxEmpty, 1);
 };
 
 // ******** OS_MailBox_Send ************
@@ -635,9 +637,9 @@ void OS_MailBox_Init(void){
 // This function will be called from a foreground thread
 // It will spin/block if the MailBox contains data not yet received 
 void OS_MailBox_Send(uint32_t data){
+	OS_bWait(&OS_BoxEmpty);
   OS_Mail = data;
-	OS_Signal(&OS_Send);
-	OS_Wait(&OS_Ack);
+	OS_bSignal(&OS_DataValid);
 };
 
 // ******** OS_MailBox_Recv ************
@@ -647,9 +649,9 @@ void OS_MailBox_Send(uint32_t data){
 // This function will be called from a foreground thread
 // It will spin/block if the MailBox is empty 
 uint32_t OS_MailBox_Recv(void){
-	OS_Wait(&OS_Send);
+	OS_bWait(&OS_DataValid);
 	uint32_t data = OS_Mail;
-	OS_Signal(&OS_Ack);
+	OS_bSignal(&OS_BoxEmpty);
 	return data;
 };
 
@@ -674,9 +676,7 @@ uint32_t OS_Time(void){
 // It is ok to change the resolution and precision of this function as long as 
 //   this function and OS_Time have the same resolution and precision 
 uint32_t OS_TimeDifference(uint32_t start, uint32_t stop){
-  // put Lab 2 (and beyond) solution here
-
-  return 0; // replace this line with solution
+  return stop - start;
 };
 
 

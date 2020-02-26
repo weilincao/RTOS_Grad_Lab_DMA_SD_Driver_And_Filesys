@@ -296,7 +296,6 @@ void Interpreter(void);    // just a prototype, link to your interpreter
 int realmain(void){     // realmain
   OS_Init();        // initialize, disable interrupts
   PortD_Init();     // debugging profile
-	UART_Init();
   MaxJitter = 0;    // in 1us units
   DataLost = 0;     // lost data between producer and consumer
   NumSamples = 0;
@@ -316,7 +315,7 @@ int realmain(void){     // realmain
 	// create initial foreground threads
   NumCreated = 0;
   NumCreated += OS_AddThread(&Consumer,128,0); 
-  NumCreated += OS_AddThread(&Interpreter,128,0); 
+  NumCreated += OS_AddThread(&Interpreter,128,0);
   NumCreated += OS_AddThread(&PID,128,0);
  
   OS_Launch(TIME_2MS); // doesn't return, interrupts enabled in here
