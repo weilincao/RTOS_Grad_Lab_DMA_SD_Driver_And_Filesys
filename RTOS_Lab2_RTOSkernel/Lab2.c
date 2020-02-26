@@ -296,6 +296,7 @@ void Interpreter(void);    // just a prototype, link to your interpreter
 int realmain(void){     // realmain
   OS_Init();        // initialize, disable interrupts
   PortD_Init();     // debugging profile
+	UART_Init();
   MaxJitter = 0;    // in 1us units
   DataLost = 0;     // lost data between producer and consumer
   NumSamples = 0;
@@ -662,5 +663,5 @@ int TestmainFIFO(void){   // TestmainFIFO
 
 //*******************Trampoline for selecting main to execute**********
 int main(void) { 			// main
-  Testmain5();
+  realmain();
 }
