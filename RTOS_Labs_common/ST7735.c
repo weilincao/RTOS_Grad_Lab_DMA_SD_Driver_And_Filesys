@@ -1303,8 +1303,8 @@ uint32_t ST7735_DrawString(uint16_t x, uint16_t y, char *pt, int16_t textColor){
     if(x>20) return count;  // number of characters printed
     count++;
   }
-  return count;  // number of characters printed
 	OS_bSignalNested(&LCDFree);
+  return count;  // number of characters printed
 }
 
 //-----------------------fillmessage-----------------------

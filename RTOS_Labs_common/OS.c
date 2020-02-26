@@ -34,7 +34,7 @@ void ContextSwitch(void);
 
 /*code written by weilin */
 #define NUMTHREADS 10 // maximum number of threads
-#define STACKSIZE 100 // number of 32-bit words in stack
+#define STACKSIZE 128 // number of 32-bit words in stack
 
 tcbType tcbs[NUMTHREADS];
 tcbType *RunPt;
@@ -92,6 +92,7 @@ void SysTick_Init(unsigned long period){
 void OS_Init(void){
 	DisableInterrupts();
 	PLL_Init(Bus80MHz);
+	ST7735_InitR(INITR_REDTAB);
 	for(int i=0; i < NUMTHREADS; i++) //free all allocated tcb free
 	{
 		tcbs[i].next = NULL;
@@ -126,6 +127,9 @@ void OS_Wait(Sema4Type *semaPt){
 		DisableInterrupts();
 	}
 	semaPt->Value=semaPt->Value-1;
+	if(semaPt->Value < 0){
+		semaPt->Value = 0;
+	}
 	EnableInterrupts();	
 }; 
 
@@ -193,7 +197,9 @@ void OS_bWait(Sema4Type *semaPt){
 // input:  pointer to a binary semaphore
 // output: none
 void OS_bSignal(Sema4Type *semaPt){
-		semaPt->Value=1;
+	DisableInterrupts();
+	semaPt->Value=1;
+	EnableInterrupts();
 }; 
 
 // ******** OS_bSignalNested ************
@@ -535,7 +541,7 @@ void OS_Suspend(void){
 uint32_t *OS_Put;
 uint32_t *OS_Get;
 
-static uint32_t OSFIFO[OSFIFOSIZE];
+uint32_t OSFIFO[OSFIFOSIZE];
 
 Sema4Type FIFOSize;
 Sema4Type FIFOmutex;
@@ -566,10 +572,8 @@ void OS_Fifo_Init(uint32_t size){
 // Since this is called by interrupt handlers 
 //  this function can not disable or enable interrupts
 int OS_Fifo_Put(uint32_t data){
-	OS_Wait(&FIFOmutex);
   if(FIFOSize.Value == OSFIFOSIZE){ // If FIFO full, data is lost, so we increment the LostCount and return false.
 		LostCount++;
-		OS_Signal(&FIFOmutex);
 		return 0;
 	}
 	*(OS_Put) = data;
@@ -577,7 +581,6 @@ int OS_Fifo_Put(uint32_t data){
 	if(OS_Put == &OSFIFO[OSFIFOSIZE]){ // Necessary to make the FIFO circular.
 		OS_Put = &OSFIFO[0];
 	}
-	OS_Signal(&FIFOmutex);
 	OS_Signal(&FIFOSize);
 	return 1;
 };  
