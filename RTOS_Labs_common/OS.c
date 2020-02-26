@@ -151,10 +151,11 @@ void OS_bWait(Sema4Type *semaPt){
 	if(semaPt->owner != RunPt){ // If a different thread is attempting to acquire the semaphore, wait
 		while(semaPt->Value==0){
 			EnableInterrupts();
-			OS_Suspend();
+			// OS_Suspend();
 			DisableInterrupts();
 		}
 		semaPt->owner = RunPt;
+		semaPt->acquire_count = 0;
 		semaPt->Value=0;
 	} else { // Increment the hold count to keep track of how many times the same thread has acquired the same semaphore.
 		semaPt->acquire_count++;
@@ -169,8 +170,9 @@ void OS_bWait(Sema4Type *semaPt){
 // input:  pointer to a binary semaphore
 // output: none
 void OS_bSignal(Sema4Type *semaPt){
-	semaPt->acquire_count--;
-	if(semaPt->acquire_count == 0){ // Only release the semaphore once all chained bWaits have been paired with a bSignal.
+	if(semaPt->acquire_count > 0){
+		semaPt->acquire_count--;
+	} else{ // Only release the semaphore once all chained bWaits have been paired with a bSignal.
 		semaPt->Value=1;
 		semaPt->owner = NULL;
 	}
@@ -287,23 +289,19 @@ tcbType* OS_Schedule(void){
 int OS_AddPeriodicThread(void(*task)(void),uint32_t period, uint32_t priority){
 	static int timer_assignment=1;
 	
-	if(timer_assignment>NUMBER_OF_TIMERS)
+	if(timer_assignment>NUMBER_OF_TIMERS){
 		return 0;
-	switch(timer_assignment)
-  {
-		case(1):
-		{
+	}
+	switch(timer_assignment){
+		case 1:
 			Timer1A_Init(task, period, priority);
 			break;
-		}
-		case(2):{
+		case 2:
 			Timer2A_Init(task, period, priority);
 			break;
-		}
-		case(3):{
+		case 3:
 			Timer3A_Init(task, period, priority);
-			break;
-		}
+			break;		
 	}	
 	timer_assignment++;
   return 1; // replace this line with solution
@@ -499,7 +497,7 @@ void OS_Suspend(void){
 };
 
 // FIFO code based on code from pg. 214 of the textbook
-#define OSFIFOSIZE 32
+#define OSFIFOSIZE 64
 uint32_t *OS_Put;
 uint32_t *OS_Get;
 
@@ -534,9 +532,9 @@ void OS_Fifo_Init(uint32_t size){
 // Since this is called by interrupt handlers 
 //  this function can not disable or enable interrupts
 int OS_Fifo_Put(uint32_t data){
-  if(FIFOSize.Value == OSFIFOSIZE){ // If FIFO full, data is lost.
+  if(FIFOSize.Value == OSFIFOSIZE){ // If FIFO full, data is lost, so we increment the LostCount and return false.
 		LostCount++;
-		return -1;
+		return 0;
 	}
 	*(OS_Put) = data;
 	OS_Put++;
@@ -544,7 +542,7 @@ int OS_Fifo_Put(uint32_t data){
 		OS_Put = &OSFIFO[0];
 	}
 	OS_Signal(&FIFOSize);
-	return 0;
+	return 1;
 };  
 
 // ******** OS_Fifo_Get ************
