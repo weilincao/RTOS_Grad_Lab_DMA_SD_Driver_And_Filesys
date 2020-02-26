@@ -33,7 +33,7 @@ void StartOS(void);
 void ContextSwitch(void);
 
 /*code written by weilin */
-#define NUMTHREADS 5 // maximum number of threads
+#define NUMTHREADS 10 // maximum number of threads
 #define STACKSIZE 100 // number of 32-bit words in stack
 
 tcbType tcbs[NUMTHREADS];
@@ -141,12 +141,12 @@ void OS_Signal(Sema4Type *semaPt){
 	EnableInterrupts();
 }; 
 
-// ******** OS_bWait ************
+// ******** OS_bWaitNested ************
 // Lab2 spinlock, set to 0
 // Lab3 block if less than zero
 // input:  pointer to a binary semaphore
 // output: none
-void OS_bWait(Sema4Type *semaPt){
+void OS_bWaitNested(Sema4Type *semaPt){
 	DisableInterrupts();
 	if(semaPt->owner != RunPt){ // If a different thread is attempting to acquire the semaphore, wait
 		while(semaPt->Value==0){
@@ -164,18 +164,52 @@ void OS_bWait(Sema4Type *semaPt){
 		
 }; 
 
+// ******** OS_bWait ************
+// Lab2 spinlock, set to 0
+// Lab3 block if less than zero
+// input:  pointer to a binary semaphore
+// output: none
+void OS_bWait(Sema4Type *semaPt){
+	DisableInterrupts();
+	//if(semaPt->owner != RunPt){ // If a different thread is attempting to acquire the semaphore, wait
+		while(semaPt->Value==0){
+			EnableInterrupts();
+			// OS_Suspend();
+			DisableInterrupts();
+		}
+	//	semaPt->owner = RunPt;
+	//	semaPt->acquire_count = 0;
+		semaPt->Value=0;
+	//} else { // Increment the hold count to keep track of how many times the same thread has acquired the same semaphore.
+	//	semaPt->acquire_count++;
+	//}
+	EnableInterrupts();	
+		
+}; 
+
 // ******** OS_bSignal ************
 // Lab2 spinlock, set to 1
 // Lab3 wakeup blocked thread if appropriate 
 // input:  pointer to a binary semaphore
 // output: none
 void OS_bSignal(Sema4Type *semaPt){
+		semaPt->Value=1;
+}; 
+
+// ******** OS_bSignalNested ************
+// Lab2 spinlock, set to 1
+// Lab3 wakeup blocked thread if appropriate 
+// input:  pointer to a binary semaphore
+// output: none
+void OS_bSignalNested(Sema4Type *semaPt){
+	DisableInterrupts();
 	if(semaPt->acquire_count > 0){
 		semaPt->acquire_count--;
 	} else{ // Only release the semaphore once all chained bWaits have been paired with a bSignal.
 		semaPt->Value=1;
 		semaPt->owner = NULL;
 	}
+	EnableInterrupts();
 }; 
 
 void SetInitialStack(int i){
@@ -532,8 +566,10 @@ void OS_Fifo_Init(uint32_t size){
 // Since this is called by interrupt handlers 
 //  this function can not disable or enable interrupts
 int OS_Fifo_Put(uint32_t data){
+	OS_Wait(&FIFOmutex);
   if(FIFOSize.Value == OSFIFOSIZE){ // If FIFO full, data is lost, so we increment the LostCount and return false.
 		LostCount++;
+		OS_Signal(&FIFOmutex);
 		return 0;
 	}
 	*(OS_Put) = data;
@@ -541,6 +577,7 @@ int OS_Fifo_Put(uint32_t data){
 	if(OS_Put == &OSFIFO[OSFIFOSIZE]){ // Necessary to make the FIFO circular.
 		OS_Put = &OSFIFO[0];
 	}
+	OS_Signal(&FIFOmutex);
 	OS_Signal(&FIFOSize);
 	return 1;
 };  

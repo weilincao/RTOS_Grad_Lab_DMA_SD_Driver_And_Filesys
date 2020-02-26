@@ -903,14 +903,14 @@ void static pushColor(uint16_t color) {
 //        color 16-bit color, which can be produced by ST7735_Color565()
 // Output: none
 void ST7735_DrawPixel(int16_t x, int16_t y, uint16_t color) {
-	OS_bWait(&LCDFree);
+	OS_bWaitNested(&LCDFree);
   if((x < 0) || (x >= _width) || (y < 0) || (y >= _height)) return;
 
 //  setAddrWindow(x,y,x+1,y+1); // original code, bug???
   setAddrWindow(x,y,x,y);
 
   pushColor(color);
-	OS_bSignal(&LCDFree);
+	OS_bSignalNested(&LCDFree);
  // deselect();
 }
 
@@ -925,13 +925,12 @@ void ST7735_DrawPixel(int16_t x, int16_t y, uint16_t color) {
 //        color 16-bit color, which can be produced by ST7735_Color565()
 // Output: none
 void ST7735_DrawFastVLine(int16_t x, int16_t y, int16_t h, uint16_t color) {
-	OS_bWait(&LCDFree);
+	OS_bWaitNested(&LCDFree);
   uint8_t hi = color >> 8, lo = color;
 
   // Rudimentary clipping
   if((x >= _width) || (y >= _height)) return;
   if((y+h-1) >= _height) h = _height-y;
-	OS_bWait(&LCDFree);
   setAddrWindow(x, y, x, y+h-1);
 
   while (h--) {
@@ -939,7 +938,7 @@ void ST7735_DrawFastVLine(int16_t x, int16_t y, int16_t h, uint16_t color) {
     writedata(lo);
   }
 	
-	OS_bSignal(&LCDFree);
+	OS_bSignalNested(&LCDFree);
 
  // deselect();
 }
@@ -955,13 +954,12 @@ void ST7735_DrawFastVLine(int16_t x, int16_t y, int16_t h, uint16_t color) {
 //        color 16-bit color, which can be produced by ST7735_Color565()
 // Output: none
 void ST7735_DrawFastHLine(int16_t x, int16_t y, int16_t w, uint16_t color) {
-	OS_bWait(&LCDFree);
+	OS_bWaitNested(&LCDFree);
   uint8_t hi = color >> 8, lo = color;
 
   // Rudimentary clipping
   if((x >= _width) || (y >= _height)) return;
   if((x+w-1) >= _width)  w = _width-x;
-	OS_bWait(&LCDFree);
   setAddrWindow(x, y, x+w-1, y);
 
   while (w--) {
@@ -969,7 +967,7 @@ void ST7735_DrawFastHLine(int16_t x, int16_t y, int16_t w, uint16_t color) {
     writedata(lo);
   }
 	
-	OS_bSignal(&LCDFree);
+	OS_bSignalNested(&LCDFree);
 
  // deselect();
 }
@@ -981,9 +979,10 @@ void ST7735_DrawFastHLine(int16_t x, int16_t y, int16_t w, uint16_t color) {
 // Input: color 16-bit color, which can be produced by ST7735_Color565()
 // Output: none
 void ST7735_FillScreen(uint16_t color) {
-	OS_bWait(&LCDFree);
+	OS_bWaitNested(&LCDFree);
   ST7735_FillRect(0, 0, _width, _height, color);  // original
 //  screen is actually 129 by 161 pixels, x 0 to 128, y goes from 0 to 160
+	OS_bSignalNested(&LCDFree);
 }
 
 
@@ -997,14 +996,13 @@ void ST7735_FillScreen(uint16_t color) {
 //        color 16-bit color, which can be produced by ST7735_Color565()
 // Output: none
 void ST7735_FillRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color) {
-	OS_bWait(&LCDFree);
+	OS_bWaitNested(&LCDFree);
   uint8_t hi = color >> 8, lo = color;
 
   // rudimentary clipping (drawChar w/big text requires this)
   if((x >= _width) || (y >= _height)) return;
   if((x + w - 1) >= _width)  w = _width  - x;
   if((y + h - 1) >= _height) h = _height - y;
-	OS_bWait(&LCDFree);
   setAddrWindow(x, y, x+w-1, y+h-1);
 
   for(y=h; y>0; y--) {
@@ -1013,7 +1011,7 @@ void ST7735_FillRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color)
       writedata(lo);
     }
   }
-	OS_bSignal(&LCDFree);
+	OS_bSignalNested(&LCDFree);
  // deselect();
 }
 
@@ -1033,12 +1031,11 @@ int16_t const smallCircle[6][3]={
   {1  ,  4,  4},
     {2,3,    2}};
 void ST7735_DrawSmallCircle(int16_t x, int16_t y, uint16_t color) {
-	OS_bWait(&LCDFree);
+	OS_bWaitNested(&LCDFree);
   uint32_t i,w;
   uint8_t hi = color >> 8, lo = color;
   // rudimentary clipping 
   if((x>_width-5)||(y>_height-5)) return; // doesn't fit
-	OS_bWait(&LCDFree);
   for(i=0; i<6; i++){
     setAddrWindow(x+smallCircle[i][0], y+i, x+smallCircle[i][1], y+i);
     w = smallCircle[i][2];
@@ -1047,7 +1044,7 @@ void ST7735_DrawSmallCircle(int16_t x, int16_t y, uint16_t color) {
       writedata(lo);
     }
   }
-	OS_bSignal(&LCDFree);
+	OS_bSignalNested(&LCDFree);
  // deselect();
 }
 //------------ST7735_DrawCircle------------
@@ -1070,12 +1067,11 @@ int16_t const circle[10][3]={
     {2   ,    7,     6},
      {  4,5,         2}};
 void ST7735_DrawCircle(int16_t x, int16_t y, uint16_t color) {
-	OS_bWait(&LCDFree);
+	OS_bWaitNested(&LCDFree);
   uint32_t i,w;
   uint8_t hi = color >> 8, lo = color;
   // rudimentary clipping 
   if((x>_width-9)||(y>_height-9)) return; // doesn't fit
-	OS_bWait(&LCDFree);
   for(i=0; i<10; i++){
     setAddrWindow(x+circle[i][0], y+i, x+circle[i][1], y+i);
     w = circle[i][2];
@@ -1084,7 +1080,7 @@ void ST7735_DrawCircle(int16_t x, int16_t y, uint16_t color) {
       writedata(lo);
     }
   }
-	OS_bSignal(&LCDFree);
+	OS_bSignalNested(&LCDFree);
  // deselect();
 }
 
@@ -1129,7 +1125,7 @@ uint16_t ST7735_SwapColor(uint16_t x) {
 // Output: none
 // Must be less than or equal to 128 pixels wide by 160 pixels high
 void ST7735_DrawBitmap(int16_t x, int16_t y, const uint16_t *image, int16_t w, int16_t h){
-  OS_bWait(&LCDFree);
+  OS_bWaitNested(&LCDFree);
 	int16_t skipC = 0;                      // non-zero if columns need to be skipped due to clipping
   int16_t originalWidth = w;              // save this value; even if not all columns fit on the screen, the image is still this width in ROM
   int i = w*(h - 1);
@@ -1162,7 +1158,6 @@ void ST7735_DrawBitmap(int16_t x, int16_t y, const uint16_t *image, int16_t w, i
     h = h - (y - _height + 1);
     y = _height - 1;
   }
-	OS_bWait(&LCDFree);
   setAddrWindow(x, y-h+1, x+w-1, y);
 
   for(y=0; y<h; y=y+1){
@@ -1176,7 +1171,7 @@ void ST7735_DrawBitmap(int16_t x, int16_t y, const uint16_t *image, int16_t w, i
     i = i + skipC;
     i = i - 2*originalWidth;
   }
-	OS_bSignal(&LCDFree);
+	OS_bSignalNested(&LCDFree);
  // deselect();
 }
 
@@ -1197,7 +1192,7 @@ void ST7735_DrawBitmap(int16_t x, int16_t y, const uint16_t *image, int16_t w, i
 //        size      number of pixels per character pixel (e.g. size==2 prints each pixel of font as 2x2 square)
 // Output: none
 void ST7735_DrawCharS(int16_t x, int16_t y, char c, int16_t textColor, int16_t bgColor, uint8_t size){
-	OS_bWait(&LCDFree);
+	OS_bWaitNested(&LCDFree);
   uint8_t line; // vertical column of pixels of character in font
   int32_t i, j;
   if((x >= _width)            || // Clip right
@@ -1228,7 +1223,7 @@ void ST7735_DrawCharS(int16_t x, int16_t y, char c, int16_t textColor, int16_t b
       line >>= 1;
     }
   }
-	OS_bSignal(&LCDFree);
+	OS_bSignalNested(&LCDFree);
 }
 
 
@@ -1246,7 +1241,7 @@ void ST7735_DrawCharS(int16_t x, int16_t y, char c, int16_t textColor, int16_t b
 //        size      number of pixels per character pixel (e.g. size==2 prints each pixel of font as 2x2 square)
 // Output: none
 void ST7735_DrawChar(int16_t x, int16_t y, char c, int16_t textColor, int16_t bgColor, uint8_t size){
-	OS_bWait(&LCDFree);
+	OS_bWaitNested(&LCDFree);
   uint8_t line; // horizontal row of pixels of character
   int32_t col, row, i, j;// loop indices
   if(((x + 6*size - 1) >= _width)  || // Clip right
@@ -1283,7 +1278,7 @@ void ST7735_DrawChar(int16_t x, int16_t y, char c, int16_t textColor, int16_t bg
     }
     line = line<<1;   // move up to the next row
   }
-	OS_bSignal(&LCDFree);
+	OS_bSignalNested(&LCDFree);
 
  // deselect();
 }
@@ -1298,7 +1293,7 @@ void ST7735_DrawChar(int16_t x, int16_t y, char c, int16_t textColor, int16_t bg
 // bgColor is Black and size is 1
 // Output: number of characters printed
 uint32_t ST7735_DrawString(uint16_t x, uint16_t y, char *pt, int16_t textColor){
-	OS_bWait(&LCDFree);
+	OS_bWaitNested(&LCDFree);
   uint32_t count = 0;
   if(y>15) return 0;
   while(*pt){
@@ -1309,7 +1304,7 @@ uint32_t ST7735_DrawString(uint16_t x, uint16_t y, char *pt, int16_t textColor){
     count++;
   }
   return count;  // number of characters printed
-	OS_bSignal(&LCDFree);
+	OS_bSignalNested(&LCDFree);
 }
 
 //-----------------------fillmessage-----------------------
@@ -1398,7 +1393,7 @@ void ST7735_SetCursor(uint32_t newX, uint32_t newY){
 // Output: none
 // Variable format 1-10 digits with no space before or after
 void ST7735_OutUDec(uint32_t n){
-	OS_bWait(&LCDFree);
+	OS_bWaitNested(&LCDFree);
   Messageindex = 0;
   fillmessage(n);
   Message[Messageindex] = 0; // terminate
@@ -1408,7 +1403,7 @@ void ST7735_OutUDec(uint32_t n){
     StX = 20;
     ST7735_DrawCharS(StX*6,StY*10,'*',ST7735_RED,ST7735_BLACK, 1);
   }
-	OS_bSignal(&LCDFree);
+	OS_bSignalNested(&LCDFree);
 }
 //-----------------------ST7735_OutUDec2-----------------------
 // Output a 32-bit number in unsigned decimal format
@@ -1416,7 +1411,7 @@ void ST7735_OutUDec(uint32_t n){
 // Output: none
 // Variable format 1-10 digits with no space before or after
 void ST7735_OutUDec2(uint32_t n, uint32_t l){
-	OS_bWait(&LCDFree);
+	OS_bWaitNested(&LCDFree);
   Messageindex = 0;
   fillmessage(n);
   while(Messageindex<5){
@@ -1424,7 +1419,7 @@ void ST7735_OutUDec2(uint32_t n, uint32_t l){
   }
   Message[Messageindex] = 0; // terminate
   ST7735_DrawString(14,l,Message,ST7735_YELLOW);
-	OS_bSignal(&LCDFree);
+	OS_bSignalNested(&LCDFree);
 }
 //------------ST7735_Message------------
 // String draw and number output.  
@@ -1433,7 +1428,7 @@ void ST7735_OutUDec2(uint32_t n, uint32_t l){
 //        pt      pointer to a null terminated string to be printed
 //        value   signed integer to be printed
 void ST7735_Message (int device, int line, char *string, int32_t value){
-	OS_bWait(&LCDFree);
+	OS_bWaitNested(&LCDFree);
 	ST7735_SetCursor(0, device*7+line); // Sets the cursor to the start of the appropriate line
   ST7735_OutString("                    "); // clean the line first by outputting 20 spaces
 	ST7735_SetCursor(0, device*7+line);
@@ -1444,7 +1439,7 @@ void ST7735_Message (int device, int line, char *string, int32_t value){
   } else{
     ST7735_OutUDec(value);
 	}
-	OS_bSignal(&LCDFree);
+	OS_bSignalNested(&LCDFree);
 }
 
 //-----------------------ST7735_OutUDec4-----------------------
@@ -1455,7 +1450,7 @@ void ST7735_Message (int device, int line, char *string, int32_t value){
 // Output: none
 // Fixed format 4 digits with no space before or after
 void ST7735_OutUDec4(uint32_t n){
-	OS_bWait(&LCDFree);
+	OS_bWaitNested(&LCDFree);
   Messageindex = 0;
   fillmessage4(n);
   Message[Messageindex] = 0; // terminate
@@ -1465,7 +1460,7 @@ void ST7735_OutUDec4(uint32_t n){
     StX = 20;
     ST7735_DrawCharS(StX*6,StY*10,'*',ST7735_RED,ST7735_BLACK, 1);
   }
-	OS_bSignal(&LCDFree);
+	OS_bSignalNested(&LCDFree);
 }
 //-----------------------ST7735_OutUDec5-----------------------
 // Output a 32-bit number in unsigned 5-digit decimal format
@@ -1475,7 +1470,7 @@ void ST7735_OutUDec4(uint32_t n){
 // Output: none
 // Fixed format 5 digits with no space before or after
 void ST7735_OutUDec5(uint32_t n){
-	OS_bWait(&LCDFree);
+	OS_bWaitNested(&LCDFree);
   Messageindex = 0;
   fillmessage5(n);
   Message[Messageindex] = 0; // terminate
@@ -1485,7 +1480,7 @@ void ST7735_OutUDec5(uint32_t n){
     StX = 20;
     ST7735_DrawCharS(StX*6,StY*10,'*',ST7735_RED,ST7735_BLACK, 1);
   }
-	OS_bSignal(&LCDFree);
+	OS_bSignalNested(&LCDFree);
 }
 
 
@@ -1506,7 +1501,7 @@ void ST7735_OutUDec5(uint32_t n){
 // Input: m new rotation value (0 to 3)
 // Output: none
 void ST7735_SetRotation(uint8_t m) {
-	OS_bWait(&LCDFree);
+	OS_bWaitNested(&LCDFree);
   writecommand(ST7735_MADCTL);
   Rotation = m % 4; // can't be higher than 3
   switch (Rotation) {
@@ -1547,7 +1542,7 @@ void ST7735_SetRotation(uint8_t m) {
      _height = ST7735_TFTWIDTH;
      break;
   }
-	OS_bSignal(&LCDFree);
+	OS_bSignalNested(&LCDFree);
 //  deselect();
 }
 
@@ -1558,13 +1553,13 @@ void ST7735_SetRotation(uint8_t m) {
 // Input: i 0 to disable inversion; non-zero to enable inversion
 // Output: none
 void ST7735_InvertDisplay(int i) {
-	OS_bWait(&LCDFree);
+	OS_bWaitNested(&LCDFree);
   if(i){
     writecommand(ST7735_INVON);
   } else{
     writecommand(ST7735_INVOFF);
   } 
-	OS_bSignal(&LCDFree);
+	OS_bSignalNested(&LCDFree);
  // deselect();
 }
 // graphics routines
@@ -1581,7 +1576,7 @@ int32_t Yrange; //YrangeDiv2;
 // Inputs: ymin and ymax are range of the plot
 // Outputs: none
 void ST7735_PlotClear(int32_t ymin, int32_t ymax){
-	OS_bWait(&LCDFree);
+	OS_bWaitNested(&LCDFree);
   ST7735_FillRect(0, 32, 128, 128, ST7735_Color565(228,228,228)); // light grey
   if(ymax>ymin){
     Ymax = ymax;
@@ -1594,7 +1589,7 @@ void ST7735_PlotClear(int32_t ymin, int32_t ymax){
   }
   //YrangeDiv2 = Yrange/2;
   X = 0;
-	OS_bSignal(&LCDFree);
+	OS_bSignalNested(&LCDFree);
 }
 
 // *************** ST7735_PlotPoint ********************
@@ -1603,7 +1598,7 @@ void ST7735_PlotClear(int32_t ymin, int32_t ymax){
 // Inputs: y is the y coordinate of the point plotted
 // Outputs: none
 void ST7735_PlotPoint(int32_t y){
-	OS_bWait(&LCDFree);
+	OS_bWaitNested(&LCDFree);
 	int32_t j;
   if(y<Ymin) y=Ymin;
   if(y>Ymax) y=Ymax;
@@ -1618,7 +1613,7 @@ void ST7735_PlotPoint(int32_t y){
   ST7735_DrawPixel(X+1, j,   ST7735_BLUE);
   ST7735_DrawPixel(X,   j+1, ST7735_BLUE);
   ST7735_DrawPixel(X+1, j+1, ST7735_BLUE);
-	OS_bSignal(&LCDFree);
+	OS_bSignalNested(&LCDFree);
 }
 // *************** ST7735_PlotLine ********************
 // Used in the voltage versus time plot, plot line to new point
@@ -1627,7 +1622,7 @@ void ST7735_PlotPoint(int32_t y){
 // Outputs: none
 int32_t lastj=0;
 void ST7735_PlotLine(int32_t y){
-	OS_bWait(&LCDFree);
+	OS_bWaitNested(&LCDFree);
 	int32_t i,j;
   if(y<Ymin) y=Ymin;
   if(y>Ymax) y=Ymax;
@@ -1655,7 +1650,7 @@ void ST7735_PlotLine(int32_t y){
     ST7735_DrawPixel(X+1, j,   ST7735_BLUE) ;
   }
   lastj = j;
-	OS_bSignal(&LCDFree);
+	OS_bSignalNested(&LCDFree);
 }
 
 // *************** ST7735_PlotPoints ********************
@@ -1665,7 +1660,7 @@ void ST7735_PlotLine(int32_t y){
 //         y2 is the y coordinate of the second point plotted
 // Outputs: none
 void ST7735_PlotPoints(int32_t y1,int32_t y2){
-	OS_bWait(&LCDFree);
+	OS_bWaitNested(&LCDFree);
 	int32_t j;
   if(y1<Ymin) y1=Ymin;
   if(y1>Ymax) y1=Ymax;
@@ -1683,7 +1678,7 @@ void ST7735_PlotPoints(int32_t y1,int32_t y2){
   if(j<32) j = 32;
   if(j>159) j = 159;
   ST7735_DrawPixel(X, j, ST7735_BLACK);
-	OS_bSignal(&LCDFree);
+	OS_bSignalNested(&LCDFree);
 }
 // *************** ST7735_PlotBar ********************
 // Used in the voltage versus time bar, plot one bar at y
@@ -1691,7 +1686,7 @@ void ST7735_PlotPoints(int32_t y1,int32_t y2){
 // Inputs: y is the y coordinate of the bar plotted
 // Outputs: none
 void ST7735_PlotBar(int32_t y){
-	OS_bWait(&LCDFree);
+	OS_bWaitNested(&LCDFree);
 	int32_t j;
   if(y<Ymin) y=Ymin;
   if(y>Ymax) y=Ymax;
@@ -1701,7 +1696,7 @@ void ST7735_PlotBar(int32_t y){
   // y=Ymin maps to j=159
   j = 32+(127*(Ymax-y))/Yrange;
   ST7735_DrawFastVLine(X, j, 159-j, ST7735_BLACK);
-	OS_bSignal(&LCDFree);
+	OS_bSignalNested(&LCDFree);
 }
 
 // full scaled defined as 3V
@@ -1740,7 +1735,7 @@ uint8_t const dBfs[512]={
 // Inputs: y is the y ADC value of the bar plotted
 // Outputs: none
 void ST7735_PlotdBfs(int32_t y){
-	OS_bWait(&LCDFree);
+	OS_bWaitNested(&LCDFree);
 int32_t j;
   y = y/2; // 0 to 2047
   if(y<0) y=0;
@@ -1751,7 +1746,7 @@ int32_t j;
   // y=0 maps to j=159
   j = dBfs[y];
   ST7735_DrawFastVLine(X, j, 159-j, ST7735_BLACK);
-	OS_bSignal(&LCDFree);
+	OS_bSignalNested(&LCDFree);
 }
 
 // *************** ST7735_PlotNext ********************
@@ -1775,14 +1770,14 @@ void ST7735_PlotNext(void){
 // Inputs: none
 // Outputs: none
 void ST7735_PlotNextErase(void){
-	OS_bWait(&LCDFree);
+	OS_bWaitNested(&LCDFree);
   if(X==127){
     X = 0;
   } else{
     X++;
   }
   ST7735_DrawFastVLine(X,32,128,ST7735_Color565(228,228,228));
-	OS_bSignal(&LCDFree);
+	OS_bSignalNested(&LCDFree);
 }
 
 // Used in all the plots to write buffer to LCD
@@ -1835,7 +1830,7 @@ void ST7735_PlotNextErase(void){
 // Inputs: 8-bit ASCII character
 // Outputs: none
 void ST7735_OutChar(char ch){
-	OS_bWait(&LCDFree);
+	OS_bWaitNested(&LCDFree);
   if((ch == 10) || (ch == 13) || (ch == 27)){
 		StY++; //read modified write need mutex
 		StX=0;
@@ -1851,7 +1846,7 @@ void ST7735_OutChar(char ch){
     StX = 20;
     ST7735_DrawCharS(StX*6,StY*10,'*',ST7735_RED,ST7735_BLACK, 1);
   }
-	OS_bSignal(&LCDFree);
+	OS_bSignalNested(&LCDFree);
   return;
 }
 //********ST7735_OutString*****************
@@ -1862,12 +1857,12 @@ void ST7735_OutChar(char ch){
 // inputs: ptr  pointer to NULL-terminated ASCII string
 // outputs: none
 void ST7735_OutString(char *ptr){
-	OS_bWait(&LCDFree);
+	OS_bWaitNested(&LCDFree);
   while(*ptr){
     ST7735_OutChar(*ptr);
     ptr = ptr + 1;
   }
-	OS_bSignal(&LCDFree);
+	OS_bSignalNested(&LCDFree);
 }
 // ************** ST7735_SetTextColor ************************
 // Sets the color in which the characters will be printed

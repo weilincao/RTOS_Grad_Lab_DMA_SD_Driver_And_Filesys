@@ -98,12 +98,30 @@ void OS_Signal(Sema4Type *semaPt);
 // output: none
 void OS_bWait(Sema4Type *semaPt); 
 
+// ******** OS_bWaitNested ************
+// Lab2 spinlock, set to 0
+// This function is used where waiting for the semaphore need to be called at the highest level, but the call stack is unknown.
+// So then this functions will automatively only wait for the semaphore at the highest level.
+// Lab3 block if less than zero
+// input:  pointer to a binary semaphore
+// output: none
+void OS_bWaitNested(Sema4Type *semaPt); 
+
 // ******** OS_bSignal ************
 // Lab2 spinlock, set to 1
 // Lab3 wakeup blocked thread if appropriate 
 // input:  pointer to a binary semaphore
 // output: none
 void OS_bSignal(Sema4Type *semaPt); 
+
+// ******** OS_bSignalNested ************
+// Lab2 spinlock, set to 1
+// This function is used where signal need to be called at the highest level, but the call stack is unknown.
+// So then this functions will automatively only signal for the semaphore at the highest level.
+// Lab3 wakeup blocked thread if appropriate 
+// input:  pointer to a binary semaphore
+// output: none
+void OS_bSignalNested(Sema4Type *semaPt); 
 
 //******** OS_AddThread *************** 
 // add a foregound thread to the scheduler
