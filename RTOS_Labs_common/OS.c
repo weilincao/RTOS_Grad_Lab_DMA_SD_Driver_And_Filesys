@@ -566,10 +566,10 @@ void OS_Fifo_Init(uint32_t size){
 // Since this is called by interrupt handlers 
 //  this function can not disable or enable interrupts
 int OS_Fifo_Put(uint32_t data){
-	OS_Wait(&FIFOmutex);
+	//OS_Wait(&FIFOmutex);
   if(FIFOSize.Value == OSFIFOSIZE){ // If FIFO full, data is lost, so we increment the LostCount and return false.
 		LostCount++;
-		OS_Signal(&FIFOmutex);
+		//OS_Signal(&FIFOmutex);
 		return 0;
 	}
 	*(OS_Put) = data;
@@ -577,7 +577,7 @@ int OS_Fifo_Put(uint32_t data){
 	if(OS_Put == &OSFIFO[OSFIFOSIZE]){ // Necessary to make the FIFO circular.
 		OS_Put = &OSFIFO[0];
 	}
-	OS_Signal(&FIFOmutex);
+	//OS_Signal(&FIFOmutex);
 	OS_Signal(&FIFOSize);
 	return 1;
 };  
