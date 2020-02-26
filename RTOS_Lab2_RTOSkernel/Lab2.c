@@ -46,7 +46,7 @@
 void cr4_fft_64_stm32(void *pssOUT, void *pssIN, unsigned short Nbin);
 //*********Prototype for PID in PID_stm32.s, STMicroelectronics
 short PID_stm32(short Error, short *Coeff);
-void Thread1b();
+
 uint32_t NumCreated;   // number of foreground threads created
 uint32_t PIDWork;      // current number of PID calculations finished
 uint32_t FilterWork;   // number of digital filter calculations finished
@@ -135,12 +135,12 @@ void DAS(void){
 void ButtonWork(void){
   uint32_t myId = OS_Id(); 
   PD1 ^= 0x02;
-  //ST7735_Message(1,0,"NumCreated =",NumCreated); 
+  ST7735_Message(1,0,"NumCreated =",NumCreated); 
   PD1 ^= 0x02;
   OS_Sleep(50);     // set this to sleep for 50msec
-  //ST7735_Message(1,1,"PIDWork     =",PIDWork);
-  //ST7735_Message(1,2,"DataLost    =",DataLost);
-  //ST7735_Message(1,3,"Jitter 0.1us=",MaxJitter);
+  ST7735_Message(1,1,"PIDWork     =",PIDWork);
+  ST7735_Message(1,2,"DataLost    =",DataLost);
+  ST7735_Message(1,3,"Jitter 0.1us=",MaxJitter);
   PD1 ^= 0x02;
   OS_Kill();  // done, OS does not return from a Kill
 } 
@@ -219,14 +219,14 @@ void Consumer(void){
 void Display(void){ 
   uint32_t data,voltage,distance;
   uint32_t myId = OS_Id();
-  //ST7735_Message(0,1,"Run length = ",(RUNLENGTH)/FS);   // top half used for Display
+  ST7735_Message(0,1,"Run length = ",(RUNLENGTH)/FS);   // top half used for Display
   while(NumSamples < RUNLENGTH) { 
     data = OS_MailBox_Recv();
     voltage = 3000*data/4095;   // calibrate your device so voltage is in mV
     distance = IRDistance_Convert(data,1); // you will calibrate this in Lab 6
     PD3 = 0x08;
-    //ST7735_Message(0,2,"v(mV) =",voltage);  
-    //ST7735_Message(0,3,"d(mm) =",distance);  
+    ST7735_Message(0,2,"v(mV) =",voltage);  
+    ST7735_Message(0,3,"d(mm) =",distance);  
     PD3 = 0x00;
   } 
   OS_Kill();  // done
@@ -296,7 +296,6 @@ void Interpreter(void);    // just a prototype, link to your interpreter
 int realmain(void){     // realmain
   OS_Init();        // initialize, disable interrupts
   PortD_Init();     // debugging profile
-	UART_Init();
   MaxJitter = 0;    // in 1us units
   DataLost = 0;     // lost data between producer and consumer
   NumSamples = 0;
@@ -316,8 +315,7 @@ int realmain(void){     // realmain
 	// create initial foreground threads
   NumCreated = 0;
   NumCreated += OS_AddThread(&Consumer,128,0); 
-  NumCreated += OS_AddThread(&Interpreter,128,0); 
-	NumCreated += OS_AddThread(&Thread1b,128,0);
+  NumCreated += OS_AddThread(&Interpreter,128,0);
   NumCreated += OS_AddThread(&PID,128,0);
  
   OS_Launch(TIME_2MS); // doesn't return, interrupts enabled in here
