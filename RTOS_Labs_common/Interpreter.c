@@ -16,7 +16,10 @@
 #include "../RTOS_Labs_common/eDisk.h"
 #include "../RTOS_Labs_common/eFile.h"
 #include "../RTOS_Labs_common/ADC.h"
-//#define UART_DEBUG 1
+#include "../inc/tm4c123gh6pm.h"
+#include "../inc/CortexM.h"
+
+#define UART_DEBUG 1
 
 // Print jitter histogram
 void Jitter(int32_t MaxJitter, uint32_t const JitterSize, uint32_t JitterHistogram[]){
@@ -35,33 +38,36 @@ void Interpreter(void){
 	while(1){
 		UART_OutString("\n\r>");
 		char buff[MAX_COMMAND_LENGTH+1];
+		
 		UART_InString(buff,MAX_COMMAND_LENGTH);
-		buff[MAX_COMMAND_LENGTH]=0;
 
+		buff[MAX_COMMAND_LENGTH]=0;
+		int args_num=0;
+		/* this whole block of code is disable because it is not reentrant or thread-safe
 		char args[MAX_ARGS][MAX_ARG_LENGTH];
 		char cmd[MAX_COMMAND_NAME_LENGTH];
-		char *token;
-
-
-		token = strtok(buff," ");
+		char * token;
+		token = strtok_r(buff," ",&saveptr);
+		//cmd=strtok_r(buff," ",&saveptr);
 		if(token==NULL){
 			UART_OutString("no command detected.\r\n");
 			return;
 		}
 
-		strcpy(cmd,token); //the first token is always the command
+		strncpy(cmd,token,MAX_ARG_LENGTH); //the first token is always the command
 		#ifdef UART_DEBUG
 		UART_OutString("\r\nThe entered command is: ");
 		UART_OutString(cmd);
 		UART_OutString(" ;\r\n");
 		#endif
 
-		int args_num=0;
+		
 		while(token!=NULL)
 		{
-			token=strtok(NULL," ");
+			token=strtok_r(NULL," ",&saveptr);//not sure why this will not work
+			//args[args_num] = strtok_r(NULL," ",&saveptr);
 			if(token!=NULL){
-				strcpy(args[args_num],token);
+				strncpy(args[args_num],token,MAX_ARG_LENGTH);//not sure why this will not work
 				#ifdef UART_DEBUG
 				UART_OutString("arg [");
 				UART_OutUDec(args_num);
@@ -75,7 +81,27 @@ void Interpreter(void){
 		#ifdef UART_DEBUG
 		UART_OutString("\r\n");
 		#endif
-
+		*/
+		
+		/////////new reentrant safe code/////
+		char* args[MAX_ARGS];
+		char* cmd;
+		char *token[MAX_ARGS];
+		char *saveptr;
+		token[0] = strtok_r(buff, " ", &saveptr);
+		int tokens_num=0;
+		do {
+			tokens_num++;
+			token[tokens_num] = strtok_r(NULL, " ", &saveptr);
+		} while (token[tokens_num] != NULL);
+		
+		cmd=token[0];
+		for(int i=0; i<(tokens_num-1);i++)
+		{
+			args[i]=token[i-1];
+		}
+		////////////////////////////////////
+		
 		if(strncmp(cmd,"help",strlen("help"))==0)
 		{
 			UART_OutString(" \r\n");
@@ -145,6 +171,7 @@ void Interpreter(void){
 		{
 			UART_OutString("\r\ninvalid command, please check spelling or enter 'help' to see a list of available commands\r\n");
 		}
+		
 	}
 }
 
