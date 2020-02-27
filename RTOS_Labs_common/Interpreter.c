@@ -86,7 +86,6 @@ void Interpreter(void){
 		/////////new reentrant safe code/////
 		char* args[MAX_ARGS];
 		char* cmd;
-		char *token[MAX_ARGS];
 		char *saveptr;
 		cmd = strtok_r(buff, " ", &saveptr);
 		args_num=-1;

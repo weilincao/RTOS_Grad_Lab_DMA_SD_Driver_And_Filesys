@@ -141,6 +141,12 @@ int OS_AddThread(void(*task)(void),
 // Outputs: Thread ID, number greater than zero 
 uint32_t OS_Id(void);
 
+//******** OS_TotalThreadCount *************** 
+// returns the total number of threads created in the system
+// Inputs: none
+// Outputs: Thread ID, number greater than zero 
+uint32_t OS_TotalThreadCount(void);
+
 //******** OS_Schedule *************** 
 // returns the TCB pointer to the thread that will be scheduled next
 // Inputs: none
