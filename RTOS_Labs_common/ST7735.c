@@ -73,9 +73,9 @@
 // CS   - PA3 TFT_CS, active low to enable TFT
 // *CS  - (NC) SDC_CS, active low to enable SDC
 // MISO - (NC) MISO SPI data from SDC to microcontroller
-// SDA  – (NC) I2C data for ADXL345 accelerometer
-// SCL  – (NC) I2C clock for ADXL345 accelerometer
-// SDO  – (NC) I2C alternate address for ADXL345 accelerometer
+// SDA  â€“ (NC) I2C data for ADXL345 accelerometer
+// SCL  â€“ (NC) I2C clock for ADXL345 accelerometer
+// SDO  â€“ (NC) I2C alternate address for ADXL345 accelerometer
 // Backlight + - Light, backlight connected to +3.3 V
 
 // **********wide.hk ST7735R with ADXL335 accelerometer *******************
@@ -89,9 +89,9 @@
 // CS   - PA3 TFT_CS, active low to enable TFT
 // *CS  - (NC) SDC_CS, active low to enable SDC
 // MISO - (NC) MISO SPI data from SDC to microcontroller
-// X– (NC) analog input X-axis from ADXL335 accelerometer
-// Y– (NC) analog input Y-axis from ADXL335 accelerometer
-// Z– (NC) analog input Z-axis from ADXL335 accelerometer
+// Xâ€“ (NC) analog input X-axis from ADXL335 accelerometer
+// Yâ€“ (NC) analog input Y-axis from ADXL335 accelerometer
+// Zâ€“ (NC) analog input Z-axis from ADXL335 accelerometer
 // Backlight + - Light, backlight connected to +3.3 V
 
 // **********HiLetgo ST7735 TFT and SDC (SDC not tested)*******************
@@ -113,6 +113,8 @@
 
 #include <stdio.h>
 #include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
 #include "../inc/tm4c123gh6pm.h"
 #include "../RTOS_Labs_common/ST7735.h"
 #include "../RTOS_Labs_common/OS.h"
@@ -1430,11 +1432,12 @@ void ST7735_OutUDec2(uint32_t n, uint32_t l){
 void ST7735_Message (int device, int line, char *string, int32_t value){
 	//OS_bWaitNested(&LCDFree);
 	OS_bWait(&LCDFree);
-	//ST7735_SetCursor(0, device*7+line); // Sets the cursor to the start of the appropriate line
-  //ST7735_OutString("      "); // clean the line first by outputting 20 spaces
-	
+
 	ST7735_SetCursor(0, device*7+line);
+		
   ST7735_OutString(string);
+	ST7735_OutChar(' ');
+
   if(value<0){ // Controls value output based on sign
     ST7735_OutChar('-');
     ST7735_OutUDec(-1*value); 

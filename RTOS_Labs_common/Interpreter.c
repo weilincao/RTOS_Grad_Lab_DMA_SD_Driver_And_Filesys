@@ -20,7 +20,7 @@
 #include "../inc/CortexM.h"
 
 #define UART_DEBUG 1
-
+extern uint32_t MaxJitter;
 // Print jitter histogram
 void Jitter(int32_t MaxJitter, uint32_t const JitterSize, uint32_t JitterHistogram[]){
   // write this for Lab 3 (the latest)
@@ -88,18 +88,14 @@ void Interpreter(void){
 		char* cmd;
 		char *token[MAX_ARGS];
 		char *saveptr;
-		token[0] = strtok_r(buff, " ", &saveptr);
-		int tokens_num=0;
+		cmd = strtok_r(buff, " ", &saveptr);
+		args_num=-1;
 		do {
-			tokens_num++;
-			token[tokens_num] = strtok_r(NULL, " ", &saveptr);
-		} while (token[tokens_num] != NULL);
-		
-		cmd=token[0];
-		for(int i=0; i<(tokens_num-1);i++)
-		{
-			args[i]=token[i-1];
-		}
+			args_num++;
+			args[args_num] = strtok_r(NULL, " ", &saveptr);
+		} while (args[args_num] != NULL);
+		args_num--;
+
 		////////////////////////////////////
 		
 		if(strncmp(cmd,"help",strlen("help"))==0)
@@ -166,6 +162,19 @@ void Interpreter(void){
 		{
 			OS_ClearMsTime();
 			UART_OutString("\r\nOS time is reset\r\n");
+		}
+		else if(strncmp(cmd,"jitter",strlen("jitter"))==0)
+		{
+			UART_OutString("\r\nJitter: ");
+			UART_OutUDec(MaxJitter);
+			UART_OutString("\n\r");			
+		}
+		else if(strncmp(cmd,"threadnum",strlen("threadnum"))==0)
+		{
+			UART_OutString("\r\ntotal number of threads created: ");
+			UART_OutUDec(OS_TotalThreadCount());
+			UART_OutString("\n\r");			
+
 		}
 		else
 		{
