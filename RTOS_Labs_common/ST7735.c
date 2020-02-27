@@ -1430,8 +1430,9 @@ void ST7735_OutUDec2(uint32_t n, uint32_t l){
 void ST7735_Message (int device, int line, char *string, int32_t value){
 	//OS_bWaitNested(&LCDFree);
 	OS_bWait(&LCDFree);
-	ST7735_SetCursor(0, device*7+line); // Sets the cursor to the start of the appropriate line
-  ST7735_OutString("                    "); // clean the line first by outputting 20 spaces
+	//ST7735_SetCursor(0, device*7+line); // Sets the cursor to the start of the appropriate line
+  //ST7735_OutString("      "); // clean the line first by outputting 20 spaces
+	
 	ST7735_SetCursor(0, device*7+line);
   ST7735_OutString(string);
   if(value<0){ // Controls value output based on sign
@@ -1440,6 +1441,7 @@ void ST7735_Message (int device, int line, char *string, int32_t value){
   } else{
     ST7735_OutUDec(value);
 	}
+	ST7735_OutString("  ");
 	OS_bSignal(&LCDFree);
 	//OS_bSignalNested(&LCDFree);
 }
