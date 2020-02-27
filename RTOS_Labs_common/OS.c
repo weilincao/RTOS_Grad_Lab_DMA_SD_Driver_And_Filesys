@@ -35,6 +35,7 @@ void ContextSwitch(void);
 /*code written by weilin */
 #define NUMTHREADS 10 // maximum number of threads
 #define STACKSIZE 256 // number of 32-bit words in stack
+#define DEBUG 0
 
 tcbType tcbs[NUMTHREADS];
 tcbType *RunPt;
@@ -47,6 +48,11 @@ uint32_t TotalThreadCount = 0;
 uint32_t SleepCount = 0;
 uint32_t ThreadId = 0;
 
+// Debug dumping
+#define DATAPOINTS 100
+uint8_t threadIDs[DATAPOINTS];
+uint32_t times[DATAPOINTS];
+uint32_t dumpIndex = 0;
 
 // Performance Measurements 
 int32_t MaxJitter;             // largest time jitter between interrupts in usec
@@ -310,6 +316,13 @@ uint32_t OS_TotalThreadCount(void){
 // Outputs: TCB pointer
 tcbType* OS_Schedule(void){
 	tcbType *temp = RunPt->next; // Round-robin scheduling
+	#ifdef DEBUG
+	if(dumpIndex < DATAPOINTS){
+		threadIDs[dumpIndex] = temp->tid;
+		times[dumpIndex] = OS_Time();
+		dumpIndex++;
+	}
+	#endif
 	if(RunPt->sleep_count){ // If the currently running thread has just been put to sleep, remove it from the active list.
 		RunPt->prev->next = RunPt->next;
 		RunPt->next->prev = RunPt->prev;
@@ -695,19 +708,18 @@ uint32_t OS_TimeDifference(uint32_t start, uint32_t stop){
 // Outputs: none
 // You are free to change how this works
 uint32_t MsTime;
-uint32_t Counter;
 void TimeIncr(void){
-	Counter++;
+	MsTime++;
+	OS_Sleep_Decrement();
+}
+
+void OSTimeIncr(void){
 	OSTime++;
-	if(Counter == 1000){
-		Counter = 0;
-		MsTime++;
-		OS_Sleep_Decrement();
-	}
 }
 
 void OS_ClearMsTime(void){
-  Timer5A_Init(&TimeIncr,80,0); // 1 ms ,highest priority
+  Timer5A_Init(&TimeIncr,80000,0); // 1 ms ,highest priority
+	Timer4A_Init(&OSTimeIncr, 80, 0);
   MsTime=0;
 };
 
