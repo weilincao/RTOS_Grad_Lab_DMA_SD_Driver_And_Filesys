@@ -34,7 +34,7 @@ void ContextSwitch(void);
 
 /*code written by weilin */
 #define NUMTHREADS 10 // maximum number of threads
-#define STACKSIZE 128 // number of 32-bit words in stack
+#define STACKSIZE 256 // number of 32-bit words in stack
 
 tcbType tcbs[NUMTHREADS];
 tcbType *RunPt;
