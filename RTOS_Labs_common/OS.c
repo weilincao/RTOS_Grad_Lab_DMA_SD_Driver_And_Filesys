@@ -131,7 +131,7 @@ void OS_Wait(Sema4Type *semaPt){
   DisableInterrupts();
 	while(semaPt->Value<=0){
 		EnableInterrupts();
-		OS_Suspend();
+		//OS_Suspend();
 		DisableInterrupts();
 	}
 	semaPt->Value=semaPt->Value-1;
@@ -685,9 +685,9 @@ uint32_t OS_MailBox_Recv(void){
 // The time resolution should be less than or equal to 1us, and the precision 32 bits
 // It is ok to change the resolution and precision of this function as long as 
 //   this function and OS_TimeDifference have the same resolution and precision 
-uint32_t OSTime;
+uint32_t MsTime;
 uint32_t OS_Time(void){
-   return OSTime * 80;
+   return MsTime * 80000 + (80000 - TIMER5_TAR_R);
 };
 
 // ******** OS_TimeDifference ************
@@ -707,19 +707,18 @@ uint32_t OS_TimeDifference(uint32_t start, uint32_t stop){
 // Inputs:  none
 // Outputs: none
 // You are free to change how this works
-uint32_t MsTime;
+
 void TimeIncr(void){
 	MsTime++;
 	OS_Sleep_Decrement();
 }
 
 void OSTimeIncr(void){
-	OSTime++;
+	//OSTime++;
 }
 
 void OS_ClearMsTime(void){
   Timer5A_Init(&TimeIncr,80000,0); // 1 ms ,highest priority
-	Timer4A_Init(&OSTimeIncr, 80, 0);
   MsTime=0;
 };
 

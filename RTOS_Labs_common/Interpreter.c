@@ -106,6 +106,8 @@ void Interpreter(void){
 			UART_OutString("adc_in [channel] [sample_size]      read [sample_size] samples of adc value and display them on UART\r\n");
 			UART_OutString("os_mstime                           display current OS time in ms on UART\r\n");
 			UART_OutString("clear_os_mstime                     reset os time\r\n");
+			UART_OutString("jitter                              displays max jitter\r\n");
+			UART_OutString("threadnum                           shows total number of created threads\r\n");
 			UART_OutString(" \r\n");
 
 
