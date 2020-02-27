@@ -43,6 +43,7 @@ int32_t Stacks[NUMTHREADS][STACKSIZE];
 
 // Thread Tracking
 uint32_t ThreadCount = 0;
+uint32_t TotalThreadCount = 0;
 uint32_t SleepCount = 0;
 uint32_t ThreadId = 0;
 
@@ -124,7 +125,7 @@ void OS_Wait(Sema4Type *semaPt){
   DisableInterrupts();
 	while(semaPt->Value<=0){
 		EnableInterrupts();
-		// OS_Suspend();
+		OS_Suspend();
 		DisableInterrupts();
 	}
 	semaPt->Value=semaPt->Value-1;
@@ -179,7 +180,7 @@ void OS_bWait(Sema4Type *semaPt){
 	//if(semaPt->owner != RunPt){ // If a different thread is attempting to acquire the semaphore, wait
 		while(semaPt->Value==0){
 			EnableInterrupts();
-			// OS_Suspend();
+			//OS_Suspend();
 			DisableInterrupts();
 		}
 	//	semaPt->owner = RunPt;
@@ -281,6 +282,7 @@ int OS_AddThread(void(*task)(void), uint32_t stackSize, uint32_t priority){
 		new_tcb->next = RunPt;
 	}
 	ThreadCount++;
+	TotalThreadCount++;
 	EndCritical(status);
 	return 1; // successful
 
@@ -292,6 +294,14 @@ int OS_AddThread(void(*task)(void), uint32_t stackSize, uint32_t priority){
 // Outputs: Thread ID, number greater than zero 
 uint32_t OS_Id(void){
   return RunPt->tid;
+};
+
+//******** OS_TotalThreadCount *************** 
+// returns the total number of threads created in the system
+// Inputs: none
+// Outputs: Thread ID, number greater than zero 
+uint32_t OS_TotalThreadCount(void){
+  return TotalThreadCount;
 };
 
 //******** OS_Schedule *************** 
@@ -538,7 +548,7 @@ void OS_Suspend(void){
 };
 
 // FIFO code based on code from pg. 214 of the textbook
-#define OSFIFOSIZE 64
+#define OSFIFOSIZE 512
 uint32_t *OS_Put;
 uint32_t *OS_Get;
 
@@ -662,10 +672,9 @@ uint32_t OS_MailBox_Recv(void){
 // The time resolution should be less than or equal to 1us, and the precision 32 bits
 // It is ok to change the resolution and precision of this function as long as 
 //   this function and OS_TimeDifference have the same resolution and precision 
+uint32_t OSTime;
 uint32_t OS_Time(void){
-  // put Lab 2 (and beyond) solution here
-
-  return 0; // replace this line with solution
+   return OSTime * 80;
 };
 
 // ******** OS_TimeDifference ************
@@ -686,15 +695,19 @@ uint32_t OS_TimeDifference(uint32_t start, uint32_t stop){
 // Outputs: none
 // You are free to change how this works
 uint32_t MsTime;
-
+uint32_t Counter;
 void TimeIncr(void){
-  MsTime++;
-	OS_Sleep_Decrement();
-  return;
+	Counter++;
+	OSTime++;
+	if(Counter == 1000){
+		Counter = 0;
+		MsTime++;
+		OS_Sleep_Decrement();
+	}
 }
 
 void OS_ClearMsTime(void){
-  Timer5A_Init(&TimeIncr,80000,0); // 1 ms ,highest priority
+  Timer5A_Init(&TimeIncr,80,0); // 1 ms ,highest priority
   MsTime=0;
 };
 
