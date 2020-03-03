@@ -535,6 +535,8 @@ static enum initRFlags TabColor;
 static int16_t _width = ST7735_TFTWIDTH;   // this could probably be a constant, except it is used in Adafruit_GFX and depends on image rotation
 static int16_t _height = ST7735_TFTHEIGHT;
 Sema4Type LCDFree;       // used for mutual exclusion
+long StartCritical();
+void EndCritical(long sr);
 
 
 // The Data/Command pin must be valid when the eighth bit is
@@ -1431,8 +1433,8 @@ void ST7735_OutUDec2(uint32_t n, uint32_t l){
 //        value   signed integer to be printed
 void ST7735_Message (int device, int line, char *string, int32_t value){
 	//OS_bWaitNested(&LCDFree);
-	OS_bWait(&LCDFree);
-
+	//OS_bWait(&LCDFree);
+	long sr = StartCritical();
 	ST7735_SetCursor(0, device*7+line);
 		
   ST7735_OutString(string);
@@ -1445,7 +1447,8 @@ void ST7735_Message (int device, int line, char *string, int32_t value){
     ST7735_OutUDec(value);
 	}
 	ST7735_OutString("  ");
-	OS_bSignal(&LCDFree);
+	EndCritical(sr);
+	//OS_bSignal(&LCDFree);
 	//OS_bSignalNested(&LCDFree);
 }
 
