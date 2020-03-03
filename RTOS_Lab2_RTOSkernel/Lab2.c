@@ -257,7 +257,7 @@ void PID(void){
   Coeff[2] = 64;    // 0.25 = 64/256 derivative coefficient*
   while(NumSamples < RUNLENGTH) { 
     for(err = -1000; err <= 1000; err++){    // made-up data
-			PF1 ^= 0x02;
+			//PF1 ^= 0x02;
       Actuator = PID_stm32(err,Coeff)/256;
     }
     PIDWork++;        // calculation finished
