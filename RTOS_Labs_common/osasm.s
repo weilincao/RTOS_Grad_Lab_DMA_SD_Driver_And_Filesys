@@ -15,6 +15,8 @@
         EXPORT  StartOS
         EXPORT  ContextSwitch
         EXPORT  PendSV_Handler
+		EXPORT	SysTick_Handler
+		IMPORT  OS_Schedule
 
 
 NVIC_INT_CTRL   EQU     0xE000ED04                              ; Interrupt control state register.
@@ -26,7 +28,6 @@ NVIC_PENDSVSET  EQU     0x10000000                              ; Value to trigg
 
 
 StartOS
-	; put your code here
     LDR R0, =RunPt ; currently running thread
 	LDR R1, [R0] ; R1 = value of RunPt
 	LDR SP, [R1] ; new thread SP; SP = RunPt->sp;
@@ -52,7 +53,6 @@ OSStartHang
 ;********************************************************************************************************
 
 ContextSwitch
-; edit this code
     LDR R0, =NVIC_INT_CTRL
 	LDR R1, =NVIC_PENDSVSET
 	STR R1, [R0]
@@ -94,26 +94,43 @@ ContextSwitch
 ;              therefore safe to assume that context being switched out was using the process stack (PSP).
 ;********************************************************************************************************
 
-PendSV_Handler
-; put your code here
-
-					; 1) Saves R0-R3,R12,LR,PC,PSR
+PendSV_Handler		; 1) Saves R0-R3,R12,LR,PC,PSR
 	CPSID I 		; 2) Make atomic
 	PUSH {R4-R11}	; 3) Save remaining regs r4-11
 	LDR R0, =RunPt 	; 4) R0=pointer to RunPt, old
 	LDR R1, [R0] 	; R1 = RunPt
 	STR SP, [R1] 	; 5) Save SP into TCB
-	LDR R1, [R1,#4] ; 6) R1 = RunPt->next
-	STR R1, [R0] 	; RunPt = R1
-	LDR SP, [R1] 	; 7) new thread SP; SP=RunPt->sp;
+	PUSH {R1, LR}
+	BL OS_Schedule
+	POP {R1, LR}
+	LDR R1, =RunPt
+	STR R0, [R1]    ; RunPt = OS_Schedule
+	; LDR R1, [R1,#4] ; 6) R1 = RunPt->next
+	; STR R1, [R0] 	; RunPt = R1
+	LDR SP, [R0] 	; 7) new thread SP; SP=RunPt->sp;
 	POP {R4-R11} 	; 8) restore regs r4-11
 	CPSIE I 		; 9) tasks run enabled
-					; 10) restore R0-R3,R12,LR,PC,PSR
+	BX LR  			; 10) restore R0-R3,R12,LR,PC,PSR
+   
+SysTick_Handler
+	CPSID I 		; 2) Make atomic
+	PUSH {R4-R11}	; 3) Save remaining regs r4-11
+	LDR R0, =RunPt 	; 4) R0=pointer to RunPt, old
+	LDR R1, [R0] 	; R1 = RunPt
+	STR SP, [R1] 	; 5) Save SP into TCB
+	PUSH {R1, LR}
+	BL OS_Schedule
+	POP {R1, LR}
+	LDR R1, =RunPt
+	STR R0, [R1]    ; RunPt = OS_Schedule
+	; LDR R1, [R1,#4] ; 6) R1 = RunPt->next
+	; STR R1, [R0] 	; RunPt = R1
+	LDR SP, [R0] 	; 7) new thread SP; SP=RunPt->sp;
+	POP {R4-R11} 	; 8) restore regs r4-11
+	CPSIE I 		; 9) tasks run enabled
+	BX LR  			; 10) restore R0-R3,R12,LR,PC,PSR
+     
     
-    
-    BX      LR                 ; Exception return will restore remaining context   
-    
-
 
     ALIGN
     END

@@ -26,14 +26,38 @@
 #define TIME_500US  (TIME_1MS/2)  
 #define TIME_250US  (TIME_1MS/5)  
 
+
+/**
+ * \brief TCB structure.
+ */
+struct tcb{
+	int32_t *sp; // pointer to stack, valid for threads not running
+	struct tcb *next; // run linked-list next pointer
+	struct tcb *prev; // run linked-list next pointer
+	struct tcb *snext; // sleeping linked-list next pointer
+	struct tcb *sprev; // sleeping linked-list prev pointer
+	int tid; // Indicates a unique thread ID. Set to -1 if TCB is available for allocation.
+	int priority; // Indicates thread priority.
+	int sleep_count; // Indicates if the thread is sleeping or not, and time it has to sleep.
+	// int is_block; // Indicates if the thread is blocked or not.
+	int index; // Indicates which index in the TCB array this TCB corresponds to.
+};
+typedef struct tcb tcbType;
+
 /**
  * \brief Semaphore structure. Feel free to change the type of semaphore, there are lots of good solutions
  */  
 struct  Sema4{
   int32_t Value;   // >0 means free, otherwise means busy        
 // add other components here, if necessary to implement blocking
+	uint32_t acquire_count; // Count of how many times the same thread has requested the semaphore beyond the first time.
+	tcbType *owner; // Thread that currently owns the semaphore
+	tcbType* blocked_tcbs;
 };
 typedef struct Sema4 Sema4Type;
+
+
+
 
 /**
  * @details  Initialize operating system, disable interrupts until OS_Launch.
@@ -74,12 +98,30 @@ void OS_Signal(Sema4Type *semaPt);
 // output: none
 void OS_bWait(Sema4Type *semaPt); 
 
+// ******** OS_bWaitNested ************
+// Lab2 spinlock, set to 0
+// This function is used where waiting for the semaphore need to be called at the highest level, but the call stack is unknown.
+// So then this functions will automatively only wait for the semaphore at the highest level.
+// Lab3 block if less than zero
+// input:  pointer to a binary semaphore
+// output: none
+void OS_bWaitNested(Sema4Type *semaPt); 
+
 // ******** OS_bSignal ************
 // Lab2 spinlock, set to 1
 // Lab3 wakeup blocked thread if appropriate 
 // input:  pointer to a binary semaphore
 // output: none
 void OS_bSignal(Sema4Type *semaPt); 
+
+// ******** OS_bSignalNested ************
+// Lab2 spinlock, set to 1
+// This function is used where signal need to be called at the highest level, but the call stack is unknown.
+// So then this functions will automatively only signal for the semaphore at the highest level.
+// Lab3 wakeup blocked thread if appropriate 
+// input:  pointer to a binary semaphore
+// output: none
+void OS_bSignalNested(Sema4Type *semaPt); 
 
 //******** OS_AddThread *************** 
 // add a foregound thread to the scheduler
@@ -98,6 +140,18 @@ int OS_AddThread(void(*task)(void),
 // Inputs: none
 // Outputs: Thread ID, number greater than zero 
 uint32_t OS_Id(void);
+
+//******** OS_TotalThreadCount *************** 
+// returns the total number of threads created in the system
+// Inputs: none
+// Outputs: Thread ID, number greater than zero 
+uint32_t OS_TotalThreadCount(void);
+
+//******** OS_Schedule *************** 
+// returns the TCB pointer to the thread that will be scheduled next
+// Inputs: none
+// Outputs: TCB pointer
+tcbType* OS_Schedule(void);
 
 //******** OS_AddPeriodicThread *************** 
 // add a background periodic task

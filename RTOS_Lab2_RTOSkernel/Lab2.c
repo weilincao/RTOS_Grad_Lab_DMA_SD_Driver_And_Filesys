@@ -257,6 +257,7 @@ void PID(void){
   Coeff[2] = 64;    // 0.25 = 64/256 derivative coefficient*
   while(NumSamples < RUNLENGTH) { 
     for(err = -1000; err <= 1000; err++){    // made-up data
+			//PF1 ^= 0x02;
       Actuator = PID_stm32(err,Coeff)/256;
     }
     PIDWork++;        // calculation finished
@@ -315,7 +316,7 @@ int realmain(void){     // realmain
 	// create initial foreground threads
   NumCreated = 0;
   NumCreated += OS_AddThread(&Consumer,128,0); 
-  NumCreated += OS_AddThread(&Interpreter,128,0); 
+  NumCreated += OS_AddThread(&Interpreter,128,0);
   NumCreated += OS_AddThread(&PID,128,0);
  
   OS_Launch(TIME_2MS); // doesn't return, interrupts enabled in here
@@ -342,7 +343,7 @@ uint32_t Count5;   // number of times thread5 loops
 void Thread1(void){
   Count1 = 0;          
   for(;;){
-    PD0 ^= 0x01;       // heartbeat
+    PF1 ^= 0x02;       // heartbeat
     Count1++;
     OS_Suspend();      // cooperative multitasking
   }
@@ -350,7 +351,7 @@ void Thread1(void){
 void Thread2(void){
   Count2 = 0;          
   for(;;){
-    PD1 ^= 0x02;       // heartbeat
+    PF2 ^= 0x04;       // heartbeat
     Count2++;
     OS_Suspend();      // cooperative multitasking
   }
@@ -358,7 +359,7 @@ void Thread2(void){
 void Thread3(void){
   Count3 = 0;          
   for(;;){
-    PD2 ^= 0x04;       // heartbeat
+    PF3 ^= 0x08;       // heartbeat
     Count3++;
     OS_Suspend();      // cooperative multitasking
   }
@@ -387,21 +388,21 @@ int Testmain1(void){  // Testmain1
 void Thread1b(void){
   Count1 = 0;          
   for(;;){
-    PD0 ^= 0x01;       // heartbeat
+    PF1 ^= 0x02;       // heartbeat
     Count1++;
   }
 }
 void Thread2b(void){
   Count2 = 0;          
   for(;;){
-    PD1 ^= 0x02;       // heartbeat
+    PF2 ^= 0x04;       // heartbeat
     Count2++;
   }
 }
 void Thread3b(void){
   Count3 = 0;          
   for(;;){
-    PD2 ^= 0x04;       // heartbeat
+    PF3 ^= 0x08;       // heartbeat
     Count3++;
   }
 }
@@ -415,7 +416,6 @@ int Testmain2(void){  // Testmain2
   NumCreated += OS_AddThread(&Thread3b,128,0); 
   // Count1 Count2 Count3 should be equal on average
   // counts are larger than Testmain1
- 
   OS_Launch(TIME_2MS); // doesn't return, interrupts enabled in here
   return 0;            // this never executes
 }
@@ -432,7 +432,7 @@ int Testmain2(void){  // Testmain2
 void Thread1c(void){ int i;
   Count1 = 0;          
   for(i=0;i<=42;i++){
-    PD0 ^= 0x01;       // heartbeat
+    PF1 ^= 0x02;       // heartbeat
     Count1++;
   }
   OS_Kill();
@@ -441,7 +441,7 @@ void Thread1c(void){ int i;
 void Thread2c(void){
   Count2 = 0;          
   for(;;){
-    PD1 ^= 0x02;       // heartbeat
+    PF2 ^= 0x04;       // heartbeat
     Count2++;
     NumCreated += OS_AddThread(&Thread1c,128,0); 
     OS_Sleep(5);
@@ -450,7 +450,7 @@ void Thread2c(void){
 void Thread3c(void){
   Count3 = 0;          
   for(;;){
-    PD2 ^= 0x04;       // heartbeat
+    PF3 ^= 0x08;       // heartbeat
     Count3++;
   }
 }
@@ -461,7 +461,7 @@ int Testmain3(void){  // Testmain3
   NumCreated = 0 ;
   NumCreated += OS_AddThread(&Thread2c,128,0); 
   NumCreated += OS_AddThread(&Thread3c,128,0); 
-  // Count3 should be larger than Count2, Count1 should be 42
+  // Count3 should be larger than Count2, Count1 should be 42 (no, it should be 43)
  
   OS_Launch(TIME_2MS); // doesn't return, interrupts enabled in here
   return 0;            // this never executes
@@ -532,7 +532,7 @@ int Testmain4(void){   // Testmain4
   return 0;            // this never executes
 }
 
-//*******************Fith TEST**********
+//*******************Fifth TEST**********
 // Once the fourth test runs, run this example (Lab 2 part 2)
 // no UART interrupts
 // SYSTICK interrupts, with or without period established by OS_Launch
@@ -604,7 +604,7 @@ int Testmain5(void){   // Testmain5
 //                on PD0 to measure context switch time
 void ThreadCS(void){       // only thread running
   while(1){
-    PD0 ^= 0x01;      // debugging profile  
+    PF1 ^= 0x02;      // debugging profile  
   }
 }
 int TestmainCS(void){       // TestmainCS
@@ -662,6 +662,6 @@ int TestmainFIFO(void){   // TestmainFIFO
 }
 
 //*******************Trampoline for selecting main to execute**********
-int main(void) { 			// main 
+int main(void) { 			// main
   realmain();
 }
