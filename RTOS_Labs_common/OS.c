@@ -32,11 +32,14 @@
 void StartOS(void);
 void ContextSwitch(void);
 
-/*code written by weilin */
+// Mode selections
+#define DEBUG 0 		// Determines if the system runs with debug functions enable
+#define PRIORITY 1  // Determines if the system runs in round-robin mode
+#define BLOCKING 1  // Determines if the system uses spinlock or blocking semaphores
+
+// TCB information
 #define NUMTHREADS 10 // maximum number of threads
 #define STACKSIZE 256 // number of 32-bit words in stack
-#define DEBUG 0 			// Determines if the system runs with debug functions enable
-#define PRIORITY 0  // Determines if the system runs in round-robin mode
 
 tcbType tcbs[NUMTHREADS];
 tcbType *RunPt;
@@ -48,6 +51,7 @@ uint32_t ThreadCount = 0;
 uint32_t TotalThreadCount = 0;
 uint32_t SleepCount = 0;
 uint32_t ThreadId = 0;
+Sema4Type *blockingOn = 0;
 
 // Debug dumping
 #define DATAPOINTS 100
@@ -135,15 +139,25 @@ void OS_InitSemaphore(Sema4Type *semaPt, int32_t value){
 // output: none
 void OS_Wait(Sema4Type *semaPt){
   DisableInterrupts();
+	#ifdef BLOCKING
+	semaPt->Value--;
+	if(semaPt->Value < 0){
+		RunPt->is_block = 1;
+		blockingOn = semaPt; // Allows the OS Scheduler to know which semaphore is being blocked on during the context switch.
+		EnableInterrupts();
+		OS_Suspend();
+	}
+	#else
 	while(semaPt->Value<=0){
 		EnableInterrupts();
-		//OS_Suspend();
+		OS_Suspend();
 		DisableInterrupts();
 	}
 	semaPt->Value=semaPt->Value-1;
 	if(semaPt->Value < 0){
 		semaPt->Value = 0;
 	}
+	#endif
 	EnableInterrupts();	
 }; 
 
@@ -156,30 +170,19 @@ void OS_Wait(Sema4Type *semaPt){
 void OS_Signal(Sema4Type *semaPt){
 	DisableInterrupts();
 	semaPt->Value=semaPt->Value+1;
-	EnableInterrupts();
-}; 
-
-// ******** OS_bWaitNested ************
-// Lab2 spinlock, set to 0
-// Lab3 block if less than zero
-// input:  pointer to a binary semaphore
-// output: none
-void OS_bWaitNested(Sema4Type *semaPt){
-	DisableInterrupts();
-	if(semaPt->owner != RunPt){ // If a different thread is attempting to acquire the semaphore, wait
-		while(semaPt->Value==0){
-			EnableInterrupts();
-			// OS_Suspend();
-			DisableInterrupts();
-		}
-		semaPt->owner = RunPt;
-		semaPt->acquire_count = 0;
-		semaPt->Value=0;
-	} else { // Increment the hold count to keep track of how many times the same thread has acquired the same semaphore.
-		semaPt->acquire_count++;
-	}
-	EnableInterrupts();	
+	#ifdef BLOCKING
+	if(semaPt->Value <= 0){
+		tcbType *temp = semaPt->blocked_tcbs; // Grab head of blocked TCB list, will be highest priority by default
+		semaPt->blocked_tcbs->is_block = 0;
+		semaPt->blocked_tcbs = semaPt->blocked_tcbs->next;
 		
+		RunPt->prev->next = temp; // Inserts unblocked thread into the end of the active list.
+		temp->prev = RunPt->prev;
+		temp->next = RunPt;
+		RunPt->prev = temp;
+	}
+	#endif	
+	EnableInterrupts();
 }; 
 
 // ******** OS_bWait ************
@@ -189,18 +192,12 @@ void OS_bWaitNested(Sema4Type *semaPt){
 // output: none
 void OS_bWait(Sema4Type *semaPt){
 	DisableInterrupts();
-	//if(semaPt->owner != RunPt){ // If a different thread is attempting to acquire the semaphore, wait
-		while(semaPt->Value==0){
-			EnableInterrupts();
-			//OS_Suspend();
-			DisableInterrupts();
-		}
-	//	semaPt->owner = RunPt;
-	//	semaPt->acquire_count = 0;
-		semaPt->Value=0;
-	//} else { // Increment the hold count to keep track of how many times the same thread has acquired the same semaphore.
-	//	semaPt->acquire_count++;
-	//}
+	while(semaPt->Value==0){
+		EnableInterrupts();
+		OS_Suspend();
+		DisableInterrupts();
+	}
+	semaPt->Value=0;
 	EnableInterrupts();	
 		
 }; 
@@ -216,22 +213,9 @@ void OS_bSignal(Sema4Type *semaPt){
 	EnableInterrupts();
 }; 
 
-// ******** OS_bSignalNested ************
-// Lab2 spinlock, set to 1
-// Lab3 wakeup blocked thread if appropriate 
-// input:  pointer to a binary semaphore
+// ******** SetInitialStack ************
+// input:  index of tcb to initialize
 // output: none
-void OS_bSignalNested(Sema4Type *semaPt){
-	DisableInterrupts();
-	if(semaPt->acquire_count > 0){
-		semaPt->acquire_count--;
-	} else{ // Only release the semaphore once all chained bWaits have been paired with a bSignal.
-		semaPt->Value=1;
-		semaPt->owner = NULL;
-	}
-	EnableInterrupts();
-}; 
-
 void SetInitialStack(int i){
 	tcbs[i].sp = &Stacks[i][STACKSIZE-16]; // thread stack pointer
 	Stacks[i][STACKSIZE-1] = 0x01000000; // Thumb bit
@@ -251,7 +235,10 @@ void SetInitialStack(int i){
 	Stacks[i][STACKSIZE-16] = 0x04040404; // R4
 }
 
-tcbType* tcb_alloc(){
+// ******** tcb_alloc ************
+// input:  none
+// output: address of "allocated" TCB, or NULL if no TCB could be allocated
+tcbType* tcb_alloc(void){
 	for(int i = 0; i < NUMTHREADS; i++){
 		if(tcbs[i].tid == -1){
 			tcbs[i].tid = ThreadId;
@@ -347,10 +334,15 @@ tcbType* OS_Schedule(void){
 		dumpIndex++;
 	}
 	#endif
-	if(RunPt->sleep_count){ // If the currently running thread has just been put to sleep, remove it from the active list.
+	if(RunPt->sleep_count || RunPt->is_block){ // If the currently running thread has just been put to sleep, remove it from the active list.
 		RunPt->prev->next = RunPt->next;
 		RunPt->next->prev = RunPt->prev;
 	}
+	
+	if(RunPt->is_block){ // Adds the current TCB to the blocked semaphore's list based on priority
+		// TODO
+	}
+	
 	return temp;
 }
 

@@ -39,7 +39,7 @@ struct tcb{
 	int tid; // Indicates a unique thread ID. Set to -1 if TCB is available for allocation.
 	int priority; // Indicates thread priority.
 	int sleep_count; // Indicates if the thread is sleeping or not, and time it has to sleep.
-	// int is_block; // Indicates if the thread is blocked or not.
+	int is_block; // Indicates if the thread is blocked or not.
 	int index; // Indicates which index in the TCB array this TCB corresponds to.
 };
 typedef struct tcb tcbType;
