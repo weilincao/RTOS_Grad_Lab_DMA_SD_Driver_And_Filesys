@@ -20,7 +20,7 @@
 #include "../inc/CortexM.h"
 
 #define UART_DEBUG 1
-extern uint32_t MaxJitter1;
+extern uint32_t MaxJitter;
 extern uint32_t MaxJitter2;
 // Print jitter histogram
 void Jitter(int32_t MaxJitter, uint32_t const JitterSize, uint32_t JitterHistogram[]){
