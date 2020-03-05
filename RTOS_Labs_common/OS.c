@@ -333,16 +333,38 @@ tcbType* OS_Schedule(void){
 		times[dumpIndex] = OS_Time();
 		dumpIndex++;
 	}
-	#endif
+	#endif	
+	
+
+	tcbType * tcb_that_need_to_be_moved;
+	
 	if(RunPt->sleep_count || RunPt->is_block){ // If the currently running thread has just been put to sleep, remove it from the active list.
+		
+		tcb_that_need_to_be_moved=RunPt;
 		RunPt->prev->next = RunPt->next;
 		RunPt->next->prev = RunPt->prev;
+		
+		if(tcb_that_need_to_be_moved->is_block){ // Adds the current TCB to the blocked semaphore's list based on priority
+			if(blockingOn->blocked_tcbs==NULL){
+				blockingOn->blocked_tcbs=RunPt;
+				blockingOn->blocked_tcbs->next=NULL;
+			}else{
+				tcbType* current= blockingOn->blocked_tcbs;
+				/*
+				exit condition for the while loop below are: 
+				1) current is pointing to the last element of the linkedlist
+				OR
+				2) the next tcb of current has lower priority than the newly blocked tcb
+				*/
+				while(current->next!=NULL && current->next->priority>=tcb_that_need_to_be_moved->priority)
+				{
+					current=current->next;
+				}
+				tcb_that_need_to_be_moved->next=current->next;
+				current->next=tcb_that_need_to_be_moved;	
+			}
+		}
 	}
-	
-	if(RunPt->is_block){ // Adds the current TCB to the blocked semaphore's list based on priority
-		// TODO
-	}
-	
 	return temp;
 }
 
