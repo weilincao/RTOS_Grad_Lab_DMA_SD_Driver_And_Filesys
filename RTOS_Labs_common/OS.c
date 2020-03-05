@@ -56,10 +56,10 @@ uint32_t times[DATAPOINTS];
 uint32_t dumpIndex = 0;
 
 // Performance Measurements 
-int32_t MaxJitter1;             // largest time jitter between interrupts in usec
-#define JITTERSIZE1 64
-uint32_t const JitterSize1 = JITTERSIZE1;
-uint32_t JitterHistogram1[JITTERSIZE1] = {0,};
+int32_t MaxJitter;             // largest time jitter between interrupts in usec
+#define JITTERSIZE 64
+uint32_t const JitterSize = JITTERSIZE;
+uint32_t JitterHistogram[JITTERSIZE] = {0,};
 
 int32_t MaxJitter2;             // largest time jitter between interrupts in usec
 #define JITTERSIZE2 64
