@@ -35,7 +35,8 @@ void ContextSwitch(void);
 /*code written by weilin */
 #define NUMTHREADS 10 // maximum number of threads
 #define STACKSIZE 256 // number of 32-bit words in stack
-#define DEBUG 0
+#define DEBUG 0 			// Determines if the system runs with debug functions enable
+#define PRIORITY 0  // Determines if the system runs in round-robin mode
 
 tcbType tcbs[NUMTHREADS];
 tcbType *RunPt;
@@ -55,10 +56,10 @@ uint32_t times[DATAPOINTS];
 uint32_t dumpIndex = 0;
 
 // Performance Measurements 
-int32_t MaxJitter1;             // largest time jitter between interrupts in usec
-#define JITTERSIZE1 64
-uint32_t const JitterSize1 = JITTERSIZE1;
-uint32_t JitterHistogram1[JITTERSIZE1] = {0,};
+int32_t MaxJitter;             // largest time jitter between interrupts in usec
+#define JITTERSIZE 64
+uint32_t const JitterSize = JITTERSIZE;
+uint32_t JitterHistogram[JITTERSIZE] = {0,};
 
 int32_t MaxJitter2;             // largest time jitter between interrupts in usec
 #define JITTERSIZE2 64
@@ -320,7 +321,25 @@ uint32_t OS_TotalThreadCount(void){
 // Inputs: none
 // Outputs: TCB pointer
 tcbType* OS_Schedule(void){
-	tcbType *temp = RunPt->next; // Round-robin scheduling
+	tcbType *temp;
+	#ifdef PRIORITY // Priority scheduling
+	temp = RunPt;
+	tcbType *check = RunPt->next;
+	uint8_t rr = 1; // Flag used for controlling round robin between threads of the same priority
+	while(check != RunPt){
+		if(check->priority < temp->priority){ // Lower value is higher priority
+			temp = check;
+			rr = 0; // If we have found a thread with higher priority, round robin isn't applicable
+		} else if (check->priority == temp->priority && rr){ // Allows round robin between threads of the same priority
+			temp = check;
+			rr = 0; // Round robin should move to the next thread with the same priority, so we prevent it from moving again unless a higher priority thread is found.
+		}
+		check = check->next; // Check next thread
+	}
+	#else // Round-robin scheduling
+	temp = RunPt->next; 
+	#endif
+		
 	#ifdef DEBUG
 	if(dumpIndex < DATAPOINTS){
 		threadIDs[dumpIndex] = temp->tid;
@@ -396,9 +415,9 @@ void OS_InitSW1(void (*task)(void), uint32_t priority){
   GPIO_PORTF_IS_R &= ~0x10;     // (d) PF4 is edge-sensitive
   GPIO_PORTF_IBE_R &= ~0x10;    //     PF4 is not both edges
   GPIO_PORTF_IEV_R &= ~0x10;    //     PF4 falling edge event
-  GPIO_PORTF_ICR_R = 0x10;      // (e) clear flag4
+  GPIO_PORTF_ICR_R |= 0x10;      // (e) clear flag4
   GPIO_PORTF_IM_R |= 0x10;      // (f) arm interrupt on PF4 *** No IME bit as mentioned in Book ***
-  NVIC_PRI7_R = (NVIC_PRI7_R&0xFF00FFFF)|0x00A00000; // (g) priority 5 (TODO: CHANGE THIS TO USE priority INPUT!)
+  NVIC_PRI7_R = (NVIC_PRI7_R&0xFF00FFFF)|(priority << 21); // (g) priority set to priority input
   NVIC_EN0_R = 0x40000000;      // (h) enable interrupt 30 in NVIC
 };
 
@@ -419,9 +438,9 @@ void OS_InitSW2(void (*task)(void), uint32_t priority){
   GPIO_PORTF_IS_R &= ~0x01;     // (d) PF0 is edge-sensitive
   GPIO_PORTF_IBE_R &= ~0x01;    //     PF0 is not both edges
   GPIO_PORTF_IEV_R &= ~0x01;    //     PF0 falling edge event
-  GPIO_PORTF_ICR_R = 0x01;      // (e) clear flag0
+  GPIO_PORTF_ICR_R |= 0x01;      // (e) clear flag0
   GPIO_PORTF_IM_R |= 0x01;      // (f) arm interrupt on PF0 *** No IME bit as mentioned in Book ***
-  NVIC_PRI7_R = (NVIC_PRI7_R&0xFF00FFFF)|0x00A00000; // (g) priority 5 (TODO: CHANGE THIS TO USE priority INPUT!)
+  NVIC_PRI7_R = (NVIC_PRI7_R&0xFF00FFFF)|(priority << 21); // (g) priority set to priority input
   NVIC_EN0_R = 0x40000000;      // (h) enable interrupt 30 in NVIC
 };
 
@@ -435,14 +454,20 @@ void GPIOPortF_Handler(void){
 	currTime = OS_MsTime();
 	if((currTime - lastTime) > DEBOUNCE_TIME){
 		lastTime = currTime;
-		//if(0){ // Change this to check which interrupt bit is set, PF0 or PF4
+		if(GPIO_PORTF_RIS_R & 0x10){ // Checks to see if SW1 was pressed
 			SW1task();
-		//} else if(1){
-			//SW2task();
-		//}
+		}
+		if(GPIO_PORTF_RIS_R & 0x01){ // Checks to see if SW2 was pressed
+			SW2task();
+		}
 	}
-	GPIO_PORTF_ICR_R = 0x10; // acknowledge SW1
-	//GPIO_PORTF_ICR_R = 0x01; // acknowledge SW2
+	if(GPIO_PORTF_RIS_R & 0x10){
+		GPIO_PORTF_ICR_R = 0x10; // acknowledge SW1
+	}
+	if(GPIO_PORTF_RIS_R & 0x01){
+		GPIO_PORTF_ICR_R = 0x01; // acknowledge SW2
+	}
+	
 }
 //******** OS_AddSW1Task *************** 
 // add a background task to run whenever the SW1 (PF4) button is pushed
