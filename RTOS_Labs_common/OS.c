@@ -35,7 +35,8 @@ void ContextSwitch(void);
 /*code written by weilin */
 #define NUMTHREADS 10 // maximum number of threads
 #define STACKSIZE 256 // number of 32-bit words in stack
-#define DEBUG 0
+#define DEBUG 0 			// Determines if the system runs with debug functions enable
+#define PRIORITY 0  // Determines if the system runs in round-robin mode
 
 tcbType tcbs[NUMTHREADS];
 tcbType *RunPt;
@@ -320,7 +321,25 @@ uint32_t OS_TotalThreadCount(void){
 // Inputs: none
 // Outputs: TCB pointer
 tcbType* OS_Schedule(void){
-	tcbType *temp = RunPt->next; // Round-robin scheduling
+	tcbType *temp;
+	#ifdef PRIORITY // Priority scheduling
+	temp = RunPt;
+	tcbType *check = RunPt->next;
+	uint8_t rr = 1; // Flag used for controlling round robin between threads of the same priority
+	while(check != RunPt){
+		if(check->priority < temp->priority){ // Lower value is higher priority
+			temp = check;
+			rr = 0; // If we have found a thread with higher priority, round robin isn't applicable
+		} else if (check->priority == temp->priority && rr){ // Allows round robin between threads of the same priority
+			temp = check;
+			rr = 0; // Round robin should move to the next thread with the same priority, so we prevent it from moving again unless a higher priority thread is found.
+		}
+		check = check->next; // Check next thread
+	}
+	#else // Round-robin scheduling
+	temp = RunPt->next; 
+	#endif
+		
 	#ifdef DEBUG
 	if(dumpIndex < DATAPOINTS){
 		threadIDs[dumpIndex] = temp->tid;
