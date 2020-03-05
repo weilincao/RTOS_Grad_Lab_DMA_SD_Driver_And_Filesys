@@ -415,9 +415,9 @@ void OS_InitSW1(void (*task)(void), uint32_t priority){
   GPIO_PORTF_IS_R &= ~0x10;     // (d) PF4 is edge-sensitive
   GPIO_PORTF_IBE_R &= ~0x10;    //     PF4 is not both edges
   GPIO_PORTF_IEV_R &= ~0x10;    //     PF4 falling edge event
-  GPIO_PORTF_ICR_R = 0x10;      // (e) clear flag4
+  GPIO_PORTF_ICR_R |= 0x10;      // (e) clear flag4
   GPIO_PORTF_IM_R |= 0x10;      // (f) arm interrupt on PF4 *** No IME bit as mentioned in Book ***
-  NVIC_PRI7_R = (NVIC_PRI7_R&0xFF00FFFF)|0x00A00000; // (g) priority 5 (TODO: CHANGE THIS TO USE priority INPUT!)
+  NVIC_PRI7_R = (NVIC_PRI7_R&0xFF00FFFF)|(priority << 21); // (g) priority set to priority input
   NVIC_EN0_R = 0x40000000;      // (h) enable interrupt 30 in NVIC
 };
 
@@ -438,9 +438,9 @@ void OS_InitSW2(void (*task)(void), uint32_t priority){
   GPIO_PORTF_IS_R &= ~0x01;     // (d) PF0 is edge-sensitive
   GPIO_PORTF_IBE_R &= ~0x01;    //     PF0 is not both edges
   GPIO_PORTF_IEV_R &= ~0x01;    //     PF0 falling edge event
-  GPIO_PORTF_ICR_R = 0x01;      // (e) clear flag0
+  GPIO_PORTF_ICR_R |= 0x01;      // (e) clear flag0
   GPIO_PORTF_IM_R |= 0x01;      // (f) arm interrupt on PF0 *** No IME bit as mentioned in Book ***
-  NVIC_PRI7_R = (NVIC_PRI7_R&0xFF00FFFF)|0x00A00000; // (g) priority 5 (TODO: CHANGE THIS TO USE priority INPUT!)
+  NVIC_PRI7_R = (NVIC_PRI7_R&0xFF00FFFF)|(priority << 21); // (g) priority set to priority input
   NVIC_EN0_R = 0x40000000;      // (h) enable interrupt 30 in NVIC
 };
 
@@ -454,14 +454,20 @@ void GPIOPortF_Handler(void){
 	currTime = OS_MsTime();
 	if((currTime - lastTime) > DEBOUNCE_TIME){
 		lastTime = currTime;
-		//if(0){ // Change this to check which interrupt bit is set, PF0 or PF4
+		if(GPIO_PORTF_RIS_R & 0x10){ // Checks to see if SW1 was pressed
 			SW1task();
-		//} else if(1){
-			//SW2task();
-		//}
+		}
+		if(GPIO_PORTF_RIS_R & 0x01){ // Checks to see if SW2 was pressed
+			SW2task();
+		}
 	}
-	GPIO_PORTF_ICR_R = 0x10; // acknowledge SW1
-	//GPIO_PORTF_ICR_R = 0x01; // acknowledge SW2
+	if(GPIO_PORTF_RIS_R & 0x10){
+		GPIO_PORTF_ICR_R = 0x10; // acknowledge SW1
+	}
+	if(GPIO_PORTF_RIS_R & 0x01){
+		GPIO_PORTF_ICR_R = 0x01; // acknowledge SW2
+	}
+	
 }
 //******** OS_AddSW1Task *************** 
 // add a background task to run whenever the SW1 (PF4) button is pushed
