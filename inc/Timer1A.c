@@ -22,7 +22,7 @@
  */
 #include <stdint.h>
 #include "../inc/tm4c123gh6pm.h"
-
+#include "../RTOS_labs_common/OS.h"
 void (*PeriodicTask1)(void);   // user function
 
 // ***************** TIMER1A_Init ****************
@@ -48,8 +48,33 @@ void Timer1A_Init(void(*task)(void), uint32_t period, uint32_t priority){
   TIMER1_CTL_R = 0x00000001;    // 10) enable TIMER1A
 }
 
+extern int32_t MaxJitter;
+extern uint32_t const JitterSize;
+extern uint32_t JitterHistogram[];
+
 void Timer1A_Handler(void){
   TIMER1_ICR_R = TIMER_ICR_TATOCINT;// acknowledge TIMER1A timeout
+	uint32_t current_time	=OS_Time();			//current time in unit of clock ticks;
+	static uint32_t last_time=0;
+	uint32_t diff;
+	if(last_time!=0){
+		diff=current_time-last_time;
+	}
+	uint32_t period=TIMER1_TAILR_R+1;
+	uint32_t jitter;
+	if(diff>period){
+		jitter = (diff-period+4)/8;  // in 0.1 usec
+	}else{
+		jitter = (period-diff+4)/8;  // in 0.1 usec
+	}
+	if(jitter > MaxJitter){
+		MaxJitter = jitter; // in usec
+	}       // jitter should be 0
+	if(jitter >= JitterSize){
+		jitter = JitterSize-1;
+	}
+  JitterHistogram[jitter]++;
+	last_time=current_time;			
   (*PeriodicTask1)();               // execute user task
 }
 void Timer1A_Stop(void){

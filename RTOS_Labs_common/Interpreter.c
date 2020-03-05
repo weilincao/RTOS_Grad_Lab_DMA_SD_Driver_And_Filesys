@@ -25,7 +25,8 @@ extern uint32_t MaxJitter2;
 // Print jitter histogram
 void Jitter(int32_t MaxJitter, uint32_t const JitterSize, uint32_t JitterHistogram[]){
   // write this for Lab 3 (the latest)
-	
+	ST7735_Message(1,3,"MaxJitter1: ", MaxJitter);
+	ST7735_Message(1,4,"MaxJitter2: ", MaxJitter2);
 }
 
 // *********** Command line interpreter (shell) ************
