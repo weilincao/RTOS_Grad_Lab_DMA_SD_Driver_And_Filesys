@@ -116,6 +116,7 @@ void OS_Init(void){
 		tcbs[i].next = NULL;
 		tcbs[i].tid = -1;
 		tcbs[i].index = i;
+		tcbs[i].sleep_count=0;
 	}
 }; 
 
@@ -171,7 +172,8 @@ void OS_Signal(Sema4Type *semaPt){
 	DisableInterrupts();
 	semaPt->Value=semaPt->Value+1;
 	#ifdef BLOCKING
-	if(semaPt->Value <= 0){
+	if(semaPt->Value <= 0 && semaPt->blocked_tcbs!=NULL){//only wake up thread if there is thread to be woken up...when value==0, it does not necessary means there are blocked thread.
+		int j=0;
 		tcbType *temp = semaPt->blocked_tcbs; // Grab head of blocked TCB list, will be highest priority by default
 		semaPt->blocked_tcbs->is_block = 0;
 		semaPt->blocked_tcbs = semaPt->blocked_tcbs->next;
@@ -278,7 +280,7 @@ int OS_AddThread(void(*task)(void), uint32_t stackSize, uint32_t priority){
 		RunPt->prev->next = new_tcb; // Adjusts TCB pointers to insert the array
 		new_tcb->prev = RunPt->prev;
 		RunPt->prev = new_tcb;
-		new_tcb->next = RunPt;
+		new_tcb->next = RunPt;//thread are added into the end of the running list
 	}
 	ThreadCount++;
 	TotalThreadCount++;
@@ -303,13 +305,59 @@ uint32_t OS_TotalThreadCount(void){
   return TotalThreadCount;
 };
 
+
+void remove_sleeping_or_blocked_tcb_from_running_list()
+{
+	tcbType * tcb_that_need_to_be_moved;
+	tcb_that_need_to_be_moved=RunPt;
+	if(RunPt->sleep_count || RunPt->is_block){ // If the currently running thread has just been put to sleep, remove it from the active list.
+		
+		tcb_that_need_to_be_moved=RunPt;
+		RunPt->prev->next = RunPt->next;
+		RunPt->next->prev = RunPt->prev;
+#ifdef BLOCKING
+		int i;
+		if(tcb_that_need_to_be_moved->is_block){ // Adds the current TCB to the blocked semaphore's list based on priority
+			if(blockingOn->blocked_tcbs==NULL){ // if it is the first one, simply has tcbs pointer points to it.
+				blockingOn->blocked_tcbs=RunPt;
+				blockingOn->blocked_tcbs->next=NULL;
+			}
+			else
+			{
+	
+				tcbType* previous = NULL;
+				tcbType* current = blockingOn->blocked_tcbs;
+				
+				//exit condition for the while loop below are: 
+				//1) current is pointing to NULL and previous are the last element of the list
+				//OR
+				//2) current is pointing to the first tcb that has lower priority than the new blocked tcb
+				int list_debug_counter=0;
+				while(current!=NULL && current->priority>=tcb_that_need_to_be_moved->priority)
+				{
+				previous=current;
+					current=current->next;
+					list_debug_counter=list_debug_counter+1;
+				}
+				tcb_that_need_to_be_moved->next = current;
+				previous->next = tcb_that_need_to_be_moved;	
+			}
+		}
+#endif		
+	}
+}
+
 //******** OS_Schedule *************** 
 // returns the TCB pointer to the thread that will be scheduled next
 // Inputs: none
 // Outputs: TCB pointer
 tcbType* OS_Schedule(void){
+	/*
+	enter condition: RunPt points to the thread that is currently running. The running list itself is not ordered.
+	*/
 	tcbType *temp;
 	#ifdef PRIORITY // Priority scheduling
+	/* Caleb code, sleep or blocked or killed threads are not yet considered in this code, which might cause issue;
 	temp = RunPt;
 	tcbType *check = RunPt->next;
 	uint8_t rr = 1; // Flag used for controlling round robin between threads of the same priority
@@ -323,10 +371,49 @@ tcbType* OS_Schedule(void){
 		}
 		check = check->next; // Check next thread
 	}
+	*/
+	int currently_highest_priority;
+	tcbType* thread_with_currently_highest_priority;
+	tcbType* check = RunPt->next;
+	int current_thread_is_still_running = (RunPt->tid!=-1) && (!RunPt->is_block) && (RunPt->sleep_count==0);
+	int round_robin_flag;//used to indicated if round robin scheduling is performed between thread of same priority.
+	int found_higher=0;//used to indicated if thread of higher priority is found;
+	if(current_thread_is_still_running)
+	{
+		thread_with_currently_highest_priority=RunPt;//Current running thread can only be considered to be re-running if it is not gonna be sleeping, killed or blocked
+		currently_highest_priority=RunPt->priority;
+		round_robin_flag=1;
+	}
+	else
+	{
+		thread_with_currently_highest_priority=RunPt->next;
+		currently_highest_priority=RunPt->next->priority;//if the current running thread is sleeping or killed or blocked, its priority should not matter anymore.
+		round_robin_flag=0; // round_robin will not be consider at all because now it is just finding the thread with highest priorioty
+	}
+	while(check!=RunPt->prev->next)//notice how RunPt is not always necessary equal to RunPt->prev->next, because RunPt tcb maybe killed or sleeping or blocked. not that it matters in this case, but it is nice to be safe
+	{
+		if(check->priority<currently_highest_priority){
+			thread_with_currently_highest_priority=check;
+			currently_highest_priority=check->priority;	
+			found_higher=1;
+		}
+		else if(check != RunPt && check->priority==RunPt->priority && round_robin_flag==1 && !found_higher) 
+			// a lot of conditions need to be met for round robin in same priority:
+		//1) (checkPt != RunPt) and (check->priority==RunPt->priority) ensure that other thread with same priority as the current thread got the chance to run too.
+		//2) round robin flag ==1 requirement ensures that round robin will only done once
+		//3) if thread with higher priority existed, you should not round robin.
+		{
+			thread_with_currently_highest_priority=check;
+			round_robin_flag=0;//ensure round robin once done once.
+		}
+		check=check->next;
+	}
+	temp = thread_with_currently_highest_priority;
 	#else // Round-robin scheduling
 	temp = RunPt->next; 
 	#endif
-		
+	remove_sleeping_or_blocked_tcb_from_running_list();//this remove the currently running thread from the running list.
+	
 	#ifdef DEBUG
 	if(dumpIndex < DATAPOINTS){
 		threadIDs[dumpIndex] = temp->tid;
@@ -336,35 +423,7 @@ tcbType* OS_Schedule(void){
 	#endif	
 	
 
-	tcbType * tcb_that_need_to_be_moved;
-	
-	if(RunPt->sleep_count || RunPt->is_block){ // If the currently running thread has just been put to sleep, remove it from the active list.
-		
-		tcb_that_need_to_be_moved=RunPt;
-		RunPt->prev->next = RunPt->next;
-		RunPt->next->prev = RunPt->prev;
-		
-		if(tcb_that_need_to_be_moved->is_block){ // Adds the current TCB to the blocked semaphore's list based on priority
-			if(blockingOn->blocked_tcbs==NULL){
-				blockingOn->blocked_tcbs=RunPt;
-				blockingOn->blocked_tcbs->next=NULL;
-			}else{
-				tcbType* current= blockingOn->blocked_tcbs;
-				/*
-				exit condition for the while loop below are: 
-				1) current is pointing to the last element of the linkedlist
-				OR
-				2) the next tcb of current has lower priority than the newly blocked tcb
-				*/
-				while(current->next!=NULL && current->next->priority>=tcb_that_need_to_be_moved->priority)
-				{
-					current=current->next;
-				}
-				tcb_that_need_to_be_moved->next=current->next;
-				current->next=tcb_that_need_to_be_moved;	
-			}
-		}
-	}
+
 	return temp;
 }
 
