@@ -535,7 +535,7 @@ static enum initRFlags TabColor;
 static int16_t _width = ST7735_TFTWIDTH;   // this could probably be a constant, except it is used in Adafruit_GFX and depends on image rotation
 static int16_t _height = ST7735_TFTHEIGHT;
 Sema4Type LCDFree;       // used for mutual exclusion
-long StartCritical();
+long StartCritical(void);
 void EndCritical(long sr);
 
 

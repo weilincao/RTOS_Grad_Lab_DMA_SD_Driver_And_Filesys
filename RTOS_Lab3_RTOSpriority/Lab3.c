@@ -660,7 +660,7 @@ void Thread7(void){  // foreground thread
   OS_Kill();
 }
 #define workA 500       // {5,50,500 us} work in Task A
-#define counts1us 10    // number of OS_Time counts per 1us
+#define counts1us 80  // number of OS_Time counts per 1us
 void TaskA(void){       // called every {1000, 2990us} in background
   PD1 = 0x02;      // debugging profile  
   CountA++;
@@ -858,5 +858,5 @@ int TestmainFIFO(void){   // TestmainFIFO
 
 //*******************Trampoline for selecting main to execute**********
 int main(void) { 			// main 
-  Testmain7();
+  Testmain6();
 }
