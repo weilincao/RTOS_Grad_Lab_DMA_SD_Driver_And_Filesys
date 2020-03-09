@@ -193,12 +193,23 @@ void OS_Signal(Sema4Type *semaPt){
 // output: none
 void OS_bWait(Sema4Type *semaPt){
 	DisableInterrupts();
+	#ifdef BLOCKING
+	//semaPt->Value -= 1;
+	if(semaPt->Value <= 0){
+		//semaPt->Value = 0;
+		RunPt->is_block = 1;
+		blockingOn = semaPt; // Allows the OS Scheduler to know which semaphore is being blocked on during the context switch.
+		EnableInterrupts();
+		OS_Suspend();
+	}
+	#else
 	while(semaPt->Value==0){
 		EnableInterrupts();
 		OS_Suspend();
 		DisableInterrupts();
 	}
-	semaPt->Value=0;
+	#endif
+	semaPt->Value = 0;
 	EnableInterrupts();	
 		
 }; 
@@ -211,6 +222,18 @@ void OS_bWait(Sema4Type *semaPt){
 void OS_bSignal(Sema4Type *semaPt){
 	DisableInterrupts();
 	semaPt->Value=1;
+	#ifdef BLOCKING
+	if(semaPt->blocked_tcbs != NULL){ // Only wakeup a thread if there is one to wake
+		tcbType *temp = semaPt->blocked_tcbs; // Grab head of blocked TCB list, will be highest priority by default
+		semaPt->blocked_tcbs->is_block = 0;
+		semaPt->blocked_tcbs = semaPt->blocked_tcbs->next;
+		
+		RunPt->prev->next = temp; // Inserts unblocked thread into the end of the active list.
+		temp->prev = RunPt->prev;
+		temp->next = RunPt;
+		RunPt->prev = temp;
+	}
+	#endif	
 	EnableInterrupts();
 }; 
 
@@ -483,7 +506,7 @@ void OS_InitSW1(void (*task)(void), uint32_t priority){
 // Outputs: none
 // Taken from ValvanoWare EdgeInterrupts_4C123
 void OS_InitSW2(void (*task)(void), uint32_t priority){
-	SW1task = task;
+	SW2task = task;
 	SYSCTL_RCGCGPIO_R |= 0x00000020; // (a) activate clock for port F
   GPIO_PORTF_DIR_R &= ~0x01;    // (b) make PF0 in (built-in button)
   GPIO_PORTF_AFSEL_R &= ~0x01;  //     disable alt funct on PF4
@@ -503,11 +526,11 @@ void OS_InitSW2(void (*task)(void), uint32_t priority){
 /*----------------------------------------------------------------------------
   PF Interrupt Handler
  *----------------------------------------------------------------------------*/
-#define DEBOUNCE_TIME 10
+#define DEBOUNCE_TIME 50
 uint32_t lastTime = 0;
 uint32_t currTime = 0;
 void GPIOPortF_Handler(void){
-	currTime = OS_MsTime();
+  currTime = OS_MsTime();
 	if((currTime - lastTime) > DEBOUNCE_TIME){
 		lastTime = currTime;
 		if(GPIO_PORTF_RIS_R & 0x10){ // Checks to see if SW1 was pressed

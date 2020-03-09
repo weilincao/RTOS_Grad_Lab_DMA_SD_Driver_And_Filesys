@@ -119,6 +119,10 @@
       <TargetDriverDllRegistry>
         <SetRegEntry>
           <Number>0</Number>
+          <Key>DLGUARM</Key>
+        </SetRegEntry>
+        <SetRegEntry>
+          <Number>0</Number>
           <Key>ARMRTXEVENTFLAGS</Key>
           <Name>-L70 -Z18 -C0 -M0 -T1</Name>
         </SetRegEntry>
@@ -152,18 +156,34 @@
         <Bp>
           <Number>0</Number>
           <Type>0</Type>
-          <LineNumber>660</LineNumber>
+          <LineNumber>549</LineNumber>
           <EnabledFlag>1</EnabledFlag>
-          <Address>3964</Address>
+          <Address>5398</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
           <SizeOfObject>0</SizeOfObject>
           <BreakByAccess>0</BreakByAccess>
           <BreakIfRCount>1</BreakIfRCount>
-          <Filename>.\Lab3.c</Filename>
+          <Filename>..\RTOS_Labs_common\OS.c</Filename>
           <ExecCommand></ExecCommand>
-          <Expression>\\Lab3\Lab3.c\660</Expression>
+          <Expression>\\Lab3\../RTOS_Labs_common/OS.c\549</Expression>
+        </Bp>
+        <Bp>
+          <Number>1</Number>
+          <Type>0</Type>
+          <LineNumber>548</LineNumber>
+          <EnabledFlag>1</EnabledFlag>
+          <Address>5392</Address>
+          <ByteObject>0</ByteObject>
+          <HtxType>0</HtxType>
+          <ManyObjects>0</ManyObjects>
+          <SizeOfObject>0</SizeOfObject>
+          <BreakByAccess>0</BreakByAccess>
+          <BreakIfRCount>1</BreakIfRCount>
+          <Filename>..\RTOS_Labs_common\OS.c</Filename>
+          <ExecCommand></ExecCommand>
+          <Expression>\\Lab3\../RTOS_Labs_common/OS.c\548</Expression>
         </Bp>
       </Breakpoint>
       <WatchWindow1>
