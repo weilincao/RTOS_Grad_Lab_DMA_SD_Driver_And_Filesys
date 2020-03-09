@@ -24,6 +24,7 @@
 #include "../inc/tm4c123gh6pm.h"
 #include "../RTOS_labs_common/OS.h"
 void (*PeriodicTask1)(void);   // user function
+uint32_t PERIOD1; // Timer period
 
 // ***************** TIMER1A_Init ****************
 // Activate TIMER1A interrupts to run user task periodically
@@ -45,6 +46,7 @@ void Timer1A_Init(void(*task)(void), uint32_t period, uint32_t priority){
 // interrupts enabled in the main program after all devices initialized
 // vector number 37, interrupt number 21
   NVIC_EN0_R = 1<<21;           // 9) enable IRQ 21 in NVIC
+	PERIOD1 = period;
   TIMER1_CTL_R = 0x00000001;    // 10) enable TIMER1A
 }
 
@@ -54,17 +56,21 @@ extern uint32_t JitterHistogram[];
 
 void Timer1A_Handler(void){
   TIMER1_ICR_R = TIMER_ICR_TATOCINT;// acknowledge TIMER1A timeout
-	uint32_t current_time	=OS_Time();			//current time in unit of clock ticks;
-	static uint32_t last_time=0;
-	uint32_t diff;
-	if(last_time!=0){
-		diff=current_time-last_time;
+	uint32_t current_time	= OS_Time();			//current time in unit of clock ticks;
+	static uint32_t last_time = 0;
+	uint32_t diff = PERIOD1;
+	if(last_time != 0){
+		if(last_time > current_time){
+			diff = last_time - current_time;
+		} else {
+			diff = current_time - last_time;
+		}
 	}
-	uint32_t period=TIMER1_TAILR_R+1;
+	uint32_t period = PERIOD1;
 	uint32_t jitter;
-	if(diff>period){
+	if(diff > period){
 		jitter = (diff-period+4)/8;  // in 0.1 usec
-	}else{
+	} else{
 		jitter = (period-diff+4)/8;  // in 0.1 usec
 	}
 	if(jitter > MaxJitter){
@@ -74,7 +80,7 @@ void Timer1A_Handler(void){
 		jitter = JitterSize-1;
 	}
   JitterHistogram[jitter]++;
-	last_time=current_time;			
+	last_time = current_time;			
   (*PeriodicTask1)();               // execute user task
 }
 void Timer1A_Stop(void){

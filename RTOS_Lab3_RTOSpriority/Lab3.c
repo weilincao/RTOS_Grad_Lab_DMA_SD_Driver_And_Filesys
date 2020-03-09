@@ -140,12 +140,12 @@ void ButtonWork(void){
 // Adds another foreground task
 // background threads execute once and return
 void SW1Push(void){
-  if(OS_MsTime() > 20){ // debounce
+  //if(OS_MsTime() > 20){ // debounce
     if(OS_AddThread(&ButtonWork,100,2)){
       NumCreated++; 
     }
-    OS_ClearMsTime();  // at least 20ms between touches
-  }
+    //OS_ClearMsTime();  // at least 20ms between touches
+  //}
 }
 
 //************SW2Push*************
@@ -153,12 +153,12 @@ void SW1Push(void){
 // Adds another foreground task
 // background threads execute once and return
 void SW2Push(void){
-  if(OS_MsTime() > 20){ // debounce
+  //if(OS_MsTime() > 20){ // debounce
     if(OS_AddThread(&ButtonWork,100,2)){
       NumCreated++; 
     }
-    OS_ClearMsTime();  // at least 20ms between touches
-  }
+    //OS_ClearMsTime();  // at least 20ms between touches
+  //}
 }
 
 //--------------end of Task 2-----------------------------
@@ -660,7 +660,7 @@ void Thread7(void){  // foreground thread
   OS_Kill();
 }
 #define workA 500       // {5,50,500 us} work in Task A
-#define counts1us 10    // number of OS_Time counts per 1us
+#define counts1us 80  // number of OS_Time counts per 1us
 void TaskA(void){       // called every {1000, 2990us} in background
   PD1 = 0x02;      // debugging profile  
   CountA++;
@@ -858,5 +858,5 @@ int TestmainFIFO(void){   // TestmainFIFO
 
 //*******************Trampoline for selecting main to execute**********
 int main(void) { 			// main 
-  Testmain7();
+  realmain();
 }

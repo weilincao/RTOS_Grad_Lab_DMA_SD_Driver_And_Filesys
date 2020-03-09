@@ -535,7 +535,7 @@ static enum initRFlags TabColor;
 static int16_t _width = ST7735_TFTWIDTH;   // this could probably be a constant, except it is used in Adafruit_GFX and depends on image rotation
 static int16_t _height = ST7735_TFTHEIGHT;
 Sema4Type LCDFree;       // used for mutual exclusion
-long StartCritical();
+long StartCritical(void);
 void EndCritical(long sr);
 
 
@@ -1425,6 +1425,7 @@ void ST7735_OutUDec2(uint32_t n, uint32_t l){
   ST7735_DrawString(14,l,Message,ST7735_YELLOW);
 	//OS_bSignalNested(&LCDFree);
 }
+
 //------------ST7735_Message------------
 // String draw and number output.  
 // Input: device  0 is on top, 1 is on bottom
@@ -1432,9 +1433,8 @@ void ST7735_OutUDec2(uint32_t n, uint32_t l){
 //        pt      pointer to a null terminated string to be printed
 //        value   signed integer to be printed
 void ST7735_Message (int device, int line, char *string, int32_t value){
-	//OS_bWaitNested(&LCDFree);
-	//OS_bWait(&LCDFree);
-	long sr = StartCritical();
+	OS_Wait(&LCDFree); // Should technically be bWait
+	//long sr = StartCritical();
 	ST7735_SetCursor(0, device*7+line);
 		
   ST7735_OutString(string);
@@ -1447,9 +1447,8 @@ void ST7735_Message (int device, int line, char *string, int32_t value){
     ST7735_OutUDec(value);
 	}
 	ST7735_OutString("  ");
-	EndCritical(sr);
-	//OS_bSignal(&LCDFree);
-	//OS_bSignalNested(&LCDFree);
+	//EndCritical(sr);
+	OS_Signal(&LCDFree); // Should technically be bSignal
 }
 
 //-----------------------ST7735_OutUDec4-----------------------

@@ -24,9 +24,19 @@ extern uint32_t MaxJitter;
 extern uint32_t MaxJitter2;
 // Print jitter histogram
 void Jitter(int32_t MaxJitter, uint32_t const JitterSize, uint32_t JitterHistogram[]){
-  // write this for Lab 3 (the latest)
-	ST7735_Message(1,3,"MaxJitter1: ", MaxJitter);
-	ST7735_Message(1,4,"MaxJitter2: ", MaxJitter2);
+	
+	//ST7735_Message(1,3,"MaxJitter1: ", MaxJitter);
+	//ST7735_Message(1,4,"MaxJitter2: ", MaxJitter2);
+	
+	UART_OutString("MaxJitter: ");
+	UART_OutUDec(MaxJitter);
+	UART_OutString("\n\r");
+	UART_OutString("Jitter Histogram: \n\r");
+	for(int i = 0; i < JitterSize; i++){
+		UART_OutUDec(JitterHistogram[i]);
+		UART_OutString("\n\r");
+	}
+	
 }
 
 // *********** Command line interpreter (shell) ************
@@ -161,7 +171,9 @@ void Interpreter(void){
 		else if(strncmp(cmd,"jitter",strlen("jitter"))==0){ // If the jitter command is entered, output the max jitter to the user.
 			UART_OutString("\r\nJitter: ");
 			UART_OutUDec(MaxJitter);
-			UART_OutString("\n\r");			
+			UART_OutString("\n\r");
+			UART_OutUDec(MaxJitter2);
+			UART_OutString("\n\r");		
 		}
 		else if(strncmp(cmd,"threadnum",strlen("threadnum"))==0){ // If the threadnum command is entered, output the total number of created threads to the user.
 			UART_OutString("\r\ntotal number of threads created: ");
