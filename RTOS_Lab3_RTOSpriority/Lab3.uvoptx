@@ -156,9 +156,9 @@
         <Bp>
           <Number>0</Number>
           <Type>0</Type>
-          <LineNumber>549</LineNumber>
+          <LineNumber>421</LineNumber>
           <EnabledFlag>1</EnabledFlag>
-          <Address>5398</Address>
+          <Address>8072</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
@@ -167,23 +167,23 @@
           <BreakIfRCount>1</BreakIfRCount>
           <Filename>..\RTOS_Labs_common\OS.c</Filename>
           <ExecCommand></ExecCommand>
-          <Expression>\\Lab3\../RTOS_Labs_common/OS.c\549</Expression>
+          <Expression>\\Lab3\../RTOS_Labs_common/OS.c\421</Expression>
         </Bp>
         <Bp>
           <Number>1</Number>
           <Type>0</Type>
-          <LineNumber>548</LineNumber>
+          <LineNumber>424</LineNumber>
           <EnabledFlag>1</EnabledFlag>
-          <Address>5392</Address>
+          <Address>0</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
           <SizeOfObject>0</SizeOfObject>
           <BreakByAccess>0</BreakByAccess>
-          <BreakIfRCount>1</BreakIfRCount>
+          <BreakIfRCount>0</BreakIfRCount>
           <Filename>..\RTOS_Labs_common\OS.c</Filename>
           <ExecCommand></ExecCommand>
-          <Expression>\\Lab3\../RTOS_Labs_common/OS.c\548</Expression>
+          <Expression></Expression>
         </Bp>
       </Breakpoint>
       <WatchWindow1>
@@ -195,7 +195,7 @@
         <Ww>
           <count>1</count>
           <WinNumber>1</WinNumber>
-          <ItemText>Count1</ItemText>
+          <ItemText>Count1,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>2</count>
@@ -227,32 +227,52 @@
           <WinNumber>1</WinNumber>
           <ItemText>CountB</ItemText>
         </Ww>
+        <Ww>
+          <count>8</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>RunPt</ItemText>
+        </Ww>
+        <Ww>
+          <count>9</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>tcbs</ItemText>
+        </Ww>
+        <Ww>
+          <count>10</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>SleepPt</ItemText>
+        </Ww>
       </WatchWindow1>
       <WatchWindow2>
         <Ww>
           <count>0</count>
           <WinNumber>2</WinNumber>
-          <ItemText>Count1</ItemText>
+          <ItemText>sleep_curr</ItemText>
         </Ww>
         <Ww>
           <count>1</count>
           <WinNumber>2</WinNumber>
-          <ItemText>Count2</ItemText>
+          <ItemText>RunPt</ItemText>
         </Ww>
         <Ww>
           <count>2</count>
           <WinNumber>2</WinNumber>
-          <ItemText>Count3</ItemText>
+          <ItemText>LCDFree</ItemText>
         </Ww>
         <Ww>
           <count>3</count>
           <WinNumber>2</WinNumber>
-          <ItemText>Count4</ItemText>
+          <ItemText>MaxJitter,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>4</count>
           <WinNumber>2</WinNumber>
-          <ItemText>Count5</ItemText>
+          <ItemText>MsTime,0x0A</ItemText>
+        </Ww>
+        <Ww>
+          <count>5</count>
+          <WinNumber>2</WinNumber>
+          <ItemText>temp</ItemText>
         </Ww>
       </WatchWindow2>
       <MemoryWindow1>
@@ -277,7 +297,7 @@
       <DebugFlag>
         <trace>0</trace>
         <periodic>1</periodic>
-        <aLwin>1</aLwin>
+        <aLwin>0</aLwin>
         <aCover>0</aCover>
         <aSer1>0</aSer1>
         <aSer2>0</aSer2>
@@ -506,7 +526,7 @@
       <GroupNumber>1</GroupNumber>
       <FileNumber>16</FileNumber>
       <FileType>1</FileType>
-      <tvExp>0</tvExp>
+      <tvExp>1</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\RTOS_Labs_common\UART0int.c</PathWithFileName>
