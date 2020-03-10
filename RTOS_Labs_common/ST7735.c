@@ -1433,7 +1433,7 @@ void ST7735_OutUDec2(uint32_t n, uint32_t l){
 //        pt      pointer to a null terminated string to be printed
 //        value   signed integer to be printed
 void ST7735_Message (int device, int line, char *string, int32_t value){
-	OS_Wait(&LCDFree); // Should technically be bWait
+	OS_bWait(&LCDFree); 
 	//long sr = StartCritical();
 	ST7735_SetCursor(0, device*7+line);
 		
@@ -1448,7 +1448,7 @@ void ST7735_Message (int device, int line, char *string, int32_t value){
 	}
 	ST7735_OutString("  ");
 	//EndCritical(sr);
-	OS_Signal(&LCDFree); // Should technically be bSignal
+	OS_bSignal(&LCDFree); 
 }
 
 //-----------------------ST7735_OutUDec4-----------------------

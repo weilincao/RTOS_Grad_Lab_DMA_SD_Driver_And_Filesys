@@ -194,9 +194,7 @@ void OS_Signal(Sema4Type *semaPt){
 void OS_bWait(Sema4Type *semaPt){
 	DisableInterrupts();
 	#ifdef BLOCKING
-	//semaPt->Value -= 1;
-	if(semaPt->Value <= 0){
-		//semaPt->Value = 0;
+	if(semaPt->Value == 0){
 		RunPt->is_block = 1;
 		blockingOn = semaPt; // Allows the OS Scheduler to know which semaphore is being blocked on during the context switch.
 		EnableInterrupts();
@@ -221,18 +219,21 @@ void OS_bWait(Sema4Type *semaPt){
 // output: none
 void OS_bSignal(Sema4Type *semaPt){
 	DisableInterrupts();
-	semaPt->Value=1;
 	#ifdef BLOCKING
 	if(semaPt->blocked_tcbs != NULL){ // Only wakeup a thread if there is one to wake
 		tcbType *temp = semaPt->blocked_tcbs; // Grab head of blocked TCB list, will be highest priority by default
 		semaPt->blocked_tcbs->is_block = 0;
 		semaPt->blocked_tcbs = semaPt->blocked_tcbs->next;
-		
+				
 		RunPt->prev->next = temp; // Inserts unblocked thread into the end of the active list.
 		temp->prev = RunPt->prev;
 		temp->next = RunPt;
 		RunPt->prev = temp;
+	} else {
+		semaPt->Value = 1;
 	}
+	#else
+	semaPt->Value=1;
 	#endif	
 	EnableInterrupts();
 }; 
@@ -304,6 +305,7 @@ int OS_AddThread(void(*task)(void), uint32_t stackSize, uint32_t priority){
 		RunPt->prev = new_tcb;
 		new_tcb->next = RunPt;//thread are added into the end of the running list
 	}
+	new_tcb->priority = priority;
 	ThreadCount++;
 	TotalThreadCount++;
 	EndCritical(status);
@@ -327,10 +329,13 @@ uint32_t OS_TotalThreadCount(void){
   return TotalThreadCount;
 };
 
-
-void remove_sleeping_or_blocked_tcb_from_running_list(void){
+//******** OS_DeactivateThread *************** 
+// removes thread from active list if it is sleeping, blocked, or killed
+// Inputs: none
+// Outputs: none
+void OS_DeactivateThread(void){
 	tcbType *tcb_that_need_to_be_moved = RunPt;
-	if(RunPt->sleep_count || RunPt->is_block){ // If the currently running thread has just been put to sleep or is blocking, remove it from the active list.
+	if(RunPt->sleep_count || RunPt->is_block || RunPt->tid == -1){ // If the currently running thread is now sleeping, blocked, or killed, remove it from active list.
 		tcb_that_need_to_be_moved = RunPt;
 		RunPt->prev->next = RunPt->next;
 		RunPt->next->prev = RunPt->prev;
@@ -348,7 +353,7 @@ void remove_sleeping_or_blocked_tcb_from_running_list(void){
 				//OR
 				//2) current is pointing to the first tcb that has lower priority than the new blocked tcb
 				int list_debug_counter=0;
-				while(current != NULL && current->priority >= tcb_that_need_to_be_moved->priority){
+				while(current != NULL && current->priority <= tcb_that_need_to_be_moved->priority){
 					previous = current;
 					current = current->next;
 					list_debug_counter = list_debug_counter+1;
@@ -387,40 +392,40 @@ tcbType* OS_Schedule(void){
 	}
 	*/
 	int currently_highest_priority;
-	tcbType* thread_with_currently_highest_priority;
+	tcbType* highestPriorityThread;
 	tcbType* check = RunPt->next;
-	int current_thread_is_still_running = (RunPt->tid!=-1) && (!RunPt->is_block) && (RunPt->sleep_count==0);
+	int current_thread_is_still_running = (RunPt->tid != -1) && (!RunPt->is_block) && (RunPt->sleep_count == 0);
 	int round_robin_flag; //used to indicated if round robin scheduling is performed between thread of same priority.
 	int found_higher = 0; //used to indicated if thread of higher priority is found;
 	if(current_thread_is_still_running){
-		thread_with_currently_highest_priority = RunPt; //Current running thread can only be considered to be re-running if it is not gonna be sleeping, killed or blocked
+		highestPriorityThread = RunPt; //Current running thread can only be considered to be re-running if it is not gonna be sleeping, killed or blocked
 		currently_highest_priority = RunPt->priority;
 		round_robin_flag = 1;
 	} else{
-		thread_with_currently_highest_priority = RunPt->next;
+		highestPriorityThread = RunPt->next;
 		currently_highest_priority = RunPt->next->priority;//if the current running thread is sleeping or killed or blocked, its priority should not matter anymore.
 		round_robin_flag = 0; // round_robin will not be consider at all because now it is just finding the thread with highest priorioty
 	}
-	while(check != RunPt->prev->next){ // notice how RunPt is not necessarily equal to RunPt->prev->next, because RunPt tcb maybe killed or sleeping or blocked. not that it matters in this case, but it is nice to be safe
+	while(check != RunPt){ // In the case where the thread is killed 
 		if(check->priority < currently_highest_priority){
-			thread_with_currently_highest_priority = check;
+			highestPriorityThread = check;
 			currently_highest_priority = check->priority;	
 			found_higher = 1;
-		} else if(check != RunPt && check->priority==RunPt->priority && round_robin_flag==1 && !found_higher){
+		} else if(check->priority == RunPt->priority && round_robin_flag==1 && !found_higher){
 			// a lot of conditions need to be met for round robin in same priority:
 			// 1) (checkPt != RunPt) and (check->priority==RunPt->priority) ensure that other thread with same priority as the current thread got the chance to run too.
 			// 2) round robin flag ==1 requirement ensures that round robin will only done once
 			// 3) if thread with higher priority existed, you should not round robin.
-			thread_with_currently_highest_priority = check;
+			highestPriorityThread = check;
 			round_robin_flag = 0; //ensure round robin once done once.
 		}
 		check = check->next;
 	}
-	temp = thread_with_currently_highest_priority;
+	temp = highestPriorityThread;
 	#else // Round-robin scheduling
 	temp = RunPt->next; 
 	#endif
-	remove_sleeping_or_blocked_tcb_from_running_list(); //this remove the currently running thread from the running list.
+	OS_DeactivateThread(); //this remove the currently running thread from the running list.
 	
 	#ifdef DEBUG
 	if(dumpIndex < DATAPOINTS){
@@ -613,9 +618,8 @@ void OS_Sleep(uint32_t sleepTime){
 	}
 	
 	SleepCount++;
-	while(SleepCount == ThreadCount){} // Spin if all threads are sleeping to prevent system crash.
-		
 	EndCritical(sr);
+	while(SleepCount == ThreadCount){} // Spin if all threads are sleeping to prevent system crash.
 	OS_Suspend();
 };  
 
@@ -678,15 +682,11 @@ void OS_Kill(void){
   long sr = StartCritical();
 		
 	RunPt->tid = -1; // Sets TCB tid to -1 to indicate TCB is available
-	
-	RunPt->prev->next = RunPt->next; // The previous element's next pt now skips over the thread we are removing.
-	RunPt->next->prev = RunPt->prev; // The next element's prev pt now skips over the thread we are removing.
-	
+
 	ThreadCount--;
 	
-	while(!ThreadCount){} // Spin if no active foreground threads to prevent system crash.
-	
   EndCritical(sr);   // end of atomic section 
+	while(!ThreadCount){} // Spin if no active foreground threads to prevent system crash.
 	OS_Suspend();      // TODO: Consider what happens if OS_Suspend is called when the last thread is killed.
   for(;;){};        // can not return    
 }; 
@@ -703,7 +703,7 @@ void OS_Suspend(void){
 };
 
 // FIFO code based on code from pg. 214 of the textbook
-#define OSFIFOSIZE 512
+#define OSFIFOSIZE 1024
 uint32_t *OS_Put;
 uint32_t *OS_Get;
 

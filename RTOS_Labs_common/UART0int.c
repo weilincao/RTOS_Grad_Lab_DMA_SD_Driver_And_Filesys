@@ -35,6 +35,7 @@
 #include "../inc/CortexM.h"
 #include "../RTOS_Labs_common/FIFO.h"
 #include "../RTOS_Labs_common/UART0int.h"
+#include "../RTOS_Labs_common/OS.h"
 
 #define NVIC_EN0_INT5           0x00000020  // Interrupt 5 enable
 
@@ -67,10 +68,13 @@
                               // create index implementation FIFO (see FIFO.h)
 AddIndexFifo(Rx, FIFOSIZE, char, FIFOSUCCESS, FIFOFAIL)
 AddIndexFifo(Tx, 1024, char, FIFOSUCCESS, FIFOFAIL)
+	
+Sema4Type UARTInputReady;
 
 // Initialize UART0
 // Baud rate is 115200 bits/sec
 void UART_Init(void){
+	OS_InitSemaphore(&UARTInputReady, 0);
   SYSCTL_RCGCUART_R |= 0x01;            // activate UART0
   SYSCTL_RCGCGPIO_R |= 0x01;            // activate port A
   RxFifo_Init();                        // initialize empty FIFOs
@@ -104,6 +108,7 @@ void static copyHardwareToSoftware(void){
     letter = UART0_DR_R;
     RxFifo_Put(letter);
   }
+	OS_bSignal(&UARTInputReady); // We have input now, so Interpreter should be able to continue.
 }
 // copy from software TX FIFO to hardware TX FIFO
 // stop when software TX FIFO is empty or hardware TX FIFO is full
@@ -118,7 +123,10 @@ void static copySoftwareToHardware(void){
 // spin if RxFifo is empty
 char UART_InChar(void){
   char letter;
-  while(RxFifo_Get(&letter) == FIFOFAIL){};
+  if(RxFifo_Get(&letter) == FIFOFAIL){
+		OS_bWait(&UARTInputReady); // Block on semaphore
+		RxFifo_Get(&letter); // Get letter
+	}
   return(letter);
 }
 
