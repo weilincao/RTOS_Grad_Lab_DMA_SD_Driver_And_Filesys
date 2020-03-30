@@ -184,7 +184,6 @@
             <hadXRAM>0</hadXRAM>
             <uocXRam>0</uocXRam>
             <RvdsVP>1</RvdsVP>
-            <RvdsMve>0</RvdsMve>
             <hadIRAM2>0</hadIRAM2>
             <hadIROM2>0</hadIROM2>
             <StupSel>8</StupSel>
@@ -471,6 +470,31 @@
               <FileName>WTimer0A.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\inc\WTimer0A.c</FilePath>
+            </File>
+            <File>
+              <FileName>Timer1A.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\inc\Timer1A.c</FilePath>
+            </File>
+            <File>
+              <FileName>Timer2A.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\inc\Timer2A.c</FilePath>
+            </File>
+            <File>
+              <FileName>Timer3A.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\inc\Timer3A.c</FilePath>
+            </File>
+            <File>
+              <FileName>Timer4A.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\inc\Timer4A.c</FilePath>
+            </File>
+            <File>
+              <FileName>Timer5A.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\inc\Timer5A.c</FilePath>
             </File>
           </Files>
         </Group>
