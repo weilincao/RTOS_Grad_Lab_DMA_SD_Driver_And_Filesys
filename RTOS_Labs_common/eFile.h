@@ -9,7 +9,16 @@
  * @note      For more information see  http://users.ece.utexas.edu/~valvano/
  * @date      Jan 12, 2020
  ******************************************************************************/
+ #define MAXFILENAME 20
+ #define MAXNUMFILES 20
+ 
+typedef struct {
+	char filename[MAXFILENAME];
+	unsigned short start_sector;
+} dirEntry; 
 
+unsigned short FAT[2048]; // This is the RAM copy of the FAT.
+dirEntry directory[MAXNUMFILES]; // This is the RAM copy of the directory.
 
 /**
  * @details This function must be called first, before calling any of the other eFile functions
