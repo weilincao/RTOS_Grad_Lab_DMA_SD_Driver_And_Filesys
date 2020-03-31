@@ -9,16 +9,29 @@
  * @note      For more information see  http://users.ece.utexas.edu/~valvano/
  * @date      Jan 12, 2020
  ******************************************************************************/
- #define MAXFILENAME 20
- #define MAXNUMFILES 20
- 
-typedef struct {
-	char filename[MAXFILENAME];
-	unsigned short start_sector;
-} dirEntry; 
+#include <stdint.h>
 
-unsigned short FAT[2048]; // This is the RAM copy of the FAT.
-dirEntry directory[MAXNUMFILES]; // This is the RAM copy of the directory.
+#define BLOCK_SIZE 					512
+#define MAX_FILE_NAME 			26
+#define FILESYS_SIZE 				1024*1024
+#define NUMBER_OF_FAT_ENTRY FILESYS_SIZE/BLOCK_SIZE
+#define FAT_ENTRY_SIZE 			2
+#define FAT_SIZE 						NUMBER_OF_FAT_ENTRY*FAT_ENTRY_SIZE
+#define DT_ENTRY_SIZE 			32
+#define DT_SIZE							512
+#define MAX_NUMBER_OF_FILES	512/32
+
+typedef struct File_Allocation_Table_Entry { //each fat_entry takes 2 byte;
+	uint16_t next_entry;
+}FAT_entry;
+
+typedef struct Directory_Table_Entry {//each directory table entry takes 32 byte
+	char name[MAX_FILE_NAME];
+	uint16_t starting_block;
+	uint32_t file_size;
+}DT_entry;
+
+
 
 /**
  * @details This function must be called first, before calling any of the other eFile functions
