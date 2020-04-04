@@ -29,7 +29,7 @@ int eFile_Init(void){ // initialize file system
 		DT[i].starting_block=0;
 		DT[i].file_size=0;
 	}
-  return 1;   // replace
+  return 0;   // replace
 }
 
 //---------- eFile_Format-----------------
@@ -60,7 +60,7 @@ int eFile_Format(void){ // erase disk, add format
 	eDisk_Write(0,(unsigned char *)DT, 0, 1);
 	eDisk_Write(0,(unsigned char *)FAT, 1, 4);
 	
-  return 1;   // replace
+  return 0;
 }
 
 //---------- eFile_Mount-----------------
@@ -70,7 +70,7 @@ int eFile_Format(void){ // erase disk, add format
 int eFile_Mount(void){ // initialize file system
 	eDisk_Read(0,(unsigned char*)DT,0,1);
 	eDisk_Read(0,(unsigned char*)FAT,1,4);
-  return 1;   // replace
+  return 0;
 }
 
 
@@ -81,13 +81,14 @@ int eFile_Mount(void){ // initialize file system
 int eFile_Create( const char name[]){  // create new file, make it empty 
 	for(int i = 1 ; i < MAX_NUMBER_OF_FILES ; i++ )
 	{
-		if(DT[i].name[0] != 0) // There is an available file name
+		if(DT[i].name[0] == 0) // There is an available empty file entry
 		{
 			strcpy(DT[i].name,name);
 			DT[i].file_size=0;
 			if(DT[0].starting_block != 0){//allocate a block from the free list
 				DT[i].starting_block=DT[0].starting_block;
-				DT[0].starting_block=FAT[DT[0].starting_block].next_entry;
+				DT[0].starting_block=FAT[DT[0].starting_block].next_entry;//have DT[0] connect to the next entry in FAT
+				FAT[DT[i].starting_block].next_entry=0; //only assign one block for newly created file; which implies you need to terminate the first block will 0 in FAT
 			} else {
 				return -1; // No empty blocks
 			}
@@ -128,7 +129,7 @@ int eFile_WOpen( const char name[]){      // open a file for writing
 	
 	eDisk_Read(0,FILE_BLOCK, curr,1); // Reads last block of file into RAM buffer.
 	FILE_BLOCK_NUM=curr;
-  return 1;   // replace  
+  return 0;
 }
 
 //---------- eFile_Write-----------------
@@ -213,8 +214,8 @@ int eFile_ROpen( const char name[]){      // open a file for reading
 // Output: return by reference data
 //         0 if successful and 1 on failure (e.g., end of file)
 int eFile_ReadNext( char *pt){       // get next byte 
-  if(file_permission == READ)
-		return -1;
+  //if(file_permission == WRITE)
+	//	return -1;
 	if(opened_file_index == -1)
 		return -2;
 	if(file_position > DT[opened_file_index].file_size){ // Reached end of file

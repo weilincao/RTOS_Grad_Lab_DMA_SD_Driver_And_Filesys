@@ -460,7 +460,7 @@ void TestFile(void){   int i; char data;
   // simple test of eFile
   if(eFile_Init())              diskError("eFile_Init",0); 
   if(eFile_Format())            diskError("eFile_Format",0); 
-  TestDirectory();
+  //TestDirectory();
   if(eFile_Create("file1"))     diskError("eFile_Create",0);
   if(eFile_WOpen("file1"))      diskError("eFile_WOpen",0);
   for(i=0;i<1000;i++){
@@ -471,14 +471,14 @@ void TestFile(void){   int i; char data;
     }
   }
   if(eFile_WClose())            diskError("eFile_WClose",0);
-  TestDirectory();
+  //TestDirectory();
   if(eFile_ROpen("file1"))      diskError("eFile_ROpen",0);
   for(i=0;i<1000;i++){
     if(eFile_ReadNext(&data))   diskError("eFile_ReadNext",i);
     UART_OutChar(data);
   }
   if(eFile_Delete("file1"))     diskError("eFile_Delete",0);
-  TestDirectory();
+  //TestDirectory();
   if(eFile_Close())             diskError("eFile_Close",0);
   printf("Successful test\n\r");
   ST7735_DrawString(0, 1, "eFile successful", ST7735_YELLOW);
@@ -514,5 +514,5 @@ int Testmain2(void){   // Testmain2
 
 //*******************Trampoline for selecting main to execute**********
 int main(void) { 			// main
-  realmain();
+  Testmain2();
 }
