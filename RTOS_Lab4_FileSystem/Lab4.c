@@ -474,7 +474,14 @@ void TestFile(void){   int i; char data;
   //TestDirectory();
   if(eFile_ROpen("file1"))      diskError("eFile_ROpen",0);
   for(i=0;i<1000;i++){
+		int j;
+		if(i==999)
+			j++;
     if(eFile_ReadNext(&data))   diskError("eFile_ReadNext",i);
+		//used for debugging
+		//UART_OutUDec(i%1000/100);
+		//UART_OutUDec(i%100/10);
+		//UART_OutUDec(i%10/1);
     UART_OutChar(data);
   }
   if(eFile_Delete("file1"))     diskError("eFile_Delete",0);
@@ -514,5 +521,5 @@ int Testmain2(void){   // Testmain2
 
 //*******************Trampoline for selecting main to execute**********
 int main(void) { 			// main
-  Testmain2();
+  realmain();
 }

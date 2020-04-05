@@ -120,6 +120,7 @@
         <SetRegEntry>
           <Number>0</Number>
           <Key>DLGUARM</Key>
+          <Name>ÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÌÈ`²	ÓÎ2]ÈõÏ</Name>
         </SetRegEntry>
         <SetRegEntry>
           <Number>0</Number>
@@ -156,57 +157,9 @@
         <Bp>
           <Number>0</Number>
           <Type>0</Type>
-          <LineNumber>157</LineNumber>
+          <LineNumber>489</LineNumber>
           <EnabledFlag>1</EnabledFlag>
-          <Address>10980</Address>
-          <ByteObject>0</ByteObject>
-          <HtxType>0</HtxType>
-          <ManyObjects>0</ManyObjects>
-          <SizeOfObject>0</SizeOfObject>
-          <BreakByAccess>0</BreakByAccess>
-          <BreakIfRCount>1</BreakIfRCount>
-          <Filename>..\RTOS_Labs_common\eFile.c</Filename>
-          <ExecCommand></ExecCommand>
-          <Expression>\\Lab4\../RTOS_Labs_common/eFile.c\157</Expression>
-        </Bp>
-        <Bp>
-          <Number>1</Number>
-          <Type>0</Type>
-          <LineNumber>143</LineNumber>
-          <EnabledFlag>1</EnabledFlag>
-          <Address>10876</Address>
-          <ByteObject>0</ByteObject>
-          <HtxType>0</HtxType>
-          <ManyObjects>0</ManyObjects>
-          <SizeOfObject>0</SizeOfObject>
-          <BreakByAccess>0</BreakByAccess>
-          <BreakIfRCount>1</BreakIfRCount>
-          <Filename>..\RTOS_Labs_common\eFile.c</Filename>
-          <ExecCommand></ExecCommand>
-          <Expression>\\Lab4\../RTOS_Labs_common/eFile.c\143</Expression>
-        </Bp>
-        <Bp>
-          <Number>2</Number>
-          <Type>0</Type>
-          <LineNumber>141</LineNumber>
-          <EnabledFlag>1</EnabledFlag>
-          <Address>10862</Address>
-          <ByteObject>0</ByteObject>
-          <HtxType>0</HtxType>
-          <ManyObjects>0</ManyObjects>
-          <SizeOfObject>0</SizeOfObject>
-          <BreakByAccess>0</BreakByAccess>
-          <BreakIfRCount>1</BreakIfRCount>
-          <Filename>..\RTOS_Labs_common\eFile.c</Filename>
-          <ExecCommand></ExecCommand>
-          <Expression>\\Lab4\../RTOS_Labs_common/eFile.c\141</Expression>
-        </Bp>
-        <Bp>
-          <Number>3</Number>
-          <Type>0</Type>
-          <LineNumber>465</LineNumber>
-          <EnabledFlag>1</EnabledFlag>
-          <Address>5554</Address>
+          <Address>5838</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
@@ -215,7 +168,7 @@
           <BreakIfRCount>1</BreakIfRCount>
           <Filename>.\Lab4.c</Filename>
           <ExecCommand></ExecCommand>
-          <Expression>\\Lab4\Lab4.c\465</Expression>
+          <Expression>\\Lab4\Lab4.c\489</Expression>
         </Bp>
       </Breakpoint>
       <WatchWindow1>
@@ -268,6 +221,11 @@
           <count>9</count>
           <WinNumber>1</WinNumber>
           <ItemText>FAT</ItemText>
+        </Ww>
+        <Ww>
+          <count>10</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>FILE_BLOCK</ItemText>
         </Ww>
       </WatchWindow1>
       <WatchWindow2>

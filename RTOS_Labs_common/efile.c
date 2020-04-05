@@ -101,7 +101,7 @@ int eFile_Create( const char name[]){  // create new file, make it empty
 
 int opened_file_index=-1;
 int file_permission=-1;
-int file_position = 0;
+int file_cursor = 0; //points to which bit of the 512 bit are being read
 
 enum FILE_PERMISSION{
 	READ,
@@ -142,7 +142,7 @@ int eFile_Write( const char data){
 	if(opened_file_index==-1)
 		return -2;
 	int location = DT[opened_file_index].file_size%BLOCK_SIZE;
-	if(location==0){//we need to append a free block because the current block is full
+	if(location==0 && DT[opened_file_index].file_size!=0){//we need to append a free block because the current block is full
 		if(DT[0].starting_block != 0){ // We have a free block we can append
 			eDisk_Write(0, FILE_BLOCK, FILE_BLOCK_NUM ,1);
 			for(int i = 0; i < BLOCK_SIZE; i++)
@@ -192,7 +192,7 @@ int eFile_WClose(void){ // close the file for writing
 // Input: file name is a single ASCII letter
 // Output: 0 if successful and 1 on failure (e.g., trouble read to flash)
 int eFile_ROpen( const char name[]){      // open a file for reading 
-	file_position=0;
+	file_cursor=0;
 	for(int i = 0; i < MAX_FILE_NAME; i++)
 	{
 		if(strcmp(name, DT[i].name) == 0)
@@ -218,12 +218,12 @@ int eFile_ReadNext( char *pt){       // get next byte
 	//	return -1;
 	if(opened_file_index == -1)
 		return -2;
-	if(file_position > DT[opened_file_index].file_size){ // Reached end of file
+	if(file_cursor > DT[opened_file_index].file_size){ // Reached end of file
 		return -3;
 	}
-	*pt = FILE_BLOCK[file_position%BLOCK_SIZE];
-	file_position++;
-	if(file_position % BLOCK_SIZE == 0){ // Check to see if we need to load in the next block
+	*pt = FILE_BLOCK[file_cursor%BLOCK_SIZE];
+	file_cursor++;
+	if(file_cursor % BLOCK_SIZE == 0 ){ // Check to see if we need to load in the next block
 		FILE_BLOCK_NUM = FAT[FILE_BLOCK_NUM].next_entry;
 		eDisk_Read(0, FILE_BLOCK, FILE_BLOCK_NUM, 1); // Loads next block into RAM
 	}
