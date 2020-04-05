@@ -474,9 +474,6 @@ void TestFile(void){   int i; char data;
   //TestDirectory();
   if(eFile_ROpen("file1"))      diskError("eFile_ROpen",0);
   for(i=0;i<1000;i++){
-		int j;
-		if(i==999)
-			j++;
     if(eFile_ReadNext(&data))   diskError("eFile_ReadNext",i);
 		//used for debugging
 		//UART_OutUDec(i%1000/100);

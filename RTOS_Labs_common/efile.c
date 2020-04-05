@@ -7,6 +7,7 @@
 #include "../RTOS_Labs_common/OS.h"
 #include "../RTOS_Labs_common/eDisk.h"
 #include "../RTOS_Labs_common/eFile.h"
+#include "../RTOS_Labs_common/UART0int.h"
 #include <stdio.h>
 
 FAT_entry FAT[NUMBER_OF_FAT_ENTRY]; // This is the RAM copy of the FAT.
@@ -44,8 +45,10 @@ int eFile_Format(void){ // erase disk, add format
 	}
 	for(int i = 0; i < NUMBER_OF_FAT_ENTRY; i++)
 	{
-		eDisk_WriteBlock(empty_block,i);
+		eDisk_Write(0,empty_block,i,1);
 	}
+	memset(&DT,0,DT_SIZE);
+	memset(&FAT,0,FAT_SIZE);
 	
 	DT[0].name[0] = '*';
 	DT[0].name[1] = '\0';
@@ -59,7 +62,7 @@ int eFile_Format(void){ // erase disk, add format
 	}
 	eDisk_Write(0,(unsigned char *)DT, 0, 1);
 	eDisk_Write(0,(unsigned char *)FAT, 1, 4);
-	
+	//eFile_Mount();
   return 0;
 }
 
@@ -92,6 +95,8 @@ int eFile_Create( const char name[]){  // create new file, make it empty
 			} else {
 				return -1; // No empty blocks
 			}
+			eDisk_Write(0,(unsigned char*)DT,0,1);
+			eDisk_Write(0,(unsigned char*)FAT,1,4);
 			return 0;
 		}
 	}
@@ -160,7 +165,7 @@ int eFile_Write( const char data){
 		FILE_BLOCK[location] = data; // Writes data to block
 	}
 	DT[opened_file_index].file_size++; // Increments file size
-	return 0;   // replace
+	return 0;
 }
 
 //---------- eFile_WClose-----------------
@@ -308,4 +313,34 @@ int eFile_Close(void){
 	int code = 0;
 	code = eDisk_Write(0, (unsigned char *)DT, 0, 1) || eDisk_Write(0, (unsigned char *)FAT, 1, 4); // Write FAT and directory back to disk.
 	return code;
+}
+
+DT_entry* find_DT_entry(const char name[])
+{
+		for(int i = 0 ; i < MAX_NUMBER_OF_FILES ; i++)
+	{
+		if(strcmp(name, DT[i].name) == 0)
+		{
+			return &DT[i];
+		}
+	}
+}
+int eFile_List(char* name[])
+{
+	int number_of_files=0;	
+	for(int i = 1 ; i < MAX_NUMBER_OF_FILES ; i++)
+	{
+		if(DT[i].name[0]!=0)
+		{
+			name[number_of_files]=DT[i].name;
+			number_of_files++;
+		}
+	}
+	return number_of_files;
+}
+
+
+int eFile_Size(const char name[])
+{
+	return find_DT_entry(name)->file_size;
 }

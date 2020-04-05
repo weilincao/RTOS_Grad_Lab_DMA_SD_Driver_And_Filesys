@@ -151,3 +151,5 @@ int eFile_DClose(void);
  * @brief  Close the disk
  */
 int eFile_Close(void); 
+int eFile_List(char* name[]);
+int eFile_Size(const char name[]);

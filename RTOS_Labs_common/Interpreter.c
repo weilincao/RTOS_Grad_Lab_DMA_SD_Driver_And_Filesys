@@ -105,7 +105,6 @@ void Interpreter(void){
 			args_num++;
 			args[args_num] = strtok_r(NULL, " ", &saveptr);
 		} while (args[args_num] != NULL);
-		args_num--;
 
 		////////////////////////////////////
 		
@@ -180,6 +179,61 @@ void Interpreter(void){
 			UART_OutUDec(OS_TotalThreadCount());
 			UART_OutString("\n\r");			
 
+		}
+		else if(strncmp(cmd,"ls",strlen("ls"))==0){ //list file
+			eFile_Mount();
+			char* file_names[MAX_NUMBER_OF_FILES];
+			int file_num=eFile_List(file_names);
+			UART_OutString("\n\r");
+			for(int i =0 ; i < file_num; i++)
+			{
+				UART_OutString(file_names[i]);
+				UART_OutString(" ");
+			}
+		}
+		else if(strncmp(cmd,"touch",strlen("touch"))==0){	//create file
+			eFile_Mount();
+			eFile_Create(args[0]);
+		}
+		else if(strncmp(cmd,"rm",strlen("rm"))==0){	//remove file
+			eFile_Mount();
+			eFile_Delete(args[0]);
+		}
+		else if(strncmp(cmd,"cat",strlen("cat"))==0){	//display file
+			char data;
+			eFile_Mount();
+			eFile_ROpen(args[0]);
+			UART_OutString("\n\r");
+			for(int i =0 ; i<eFile_Size(args[0]); i++)
+			{
+				eFile_ReadNext(&data);
+				UART_OutChar(data);
+			}
+			eFile_RClose();
+		}
+		else if(strncmp(cmd,"echo",strlen("echo"))==0){	//used for write things into file
+			char data;
+			if(args_num==1)
+				UART_OutString(args[0]);
+			if(args_num==3 && strcmp(args[1],">>")==0)
+			{
+				eFile_Mount();
+				eFile_WOpen(args[2]);
+				//UART_OutString(args[2]);
+				for(int i =0 ; i < strlen(args[0]) ; i ++)
+				{
+						eFile_Write(args[0][i]);
+						//UART_OutChar(args[0][i]);
+				}
+				eFile_WClose();
+			}
+		}
+		else if(strncmp(cmd,"format",strlen("format"))==0){	//used for write things into file
+			eFile_Mount();
+			eFile_Format();
+		}
+		else if(strncmp(cmd,"load_sd",strlen("load_sd"))==0){	//used for write things into file
+			eFile_Mount();
 		}
 		else{ // If the user entered an invalid command, notify them.
 			UART_OutString("\r\ninvalid command, please check spelling or enter 'help' to see a list of available commands\r\n");
