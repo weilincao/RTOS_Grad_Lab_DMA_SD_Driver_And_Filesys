@@ -339,16 +339,15 @@ void OS_Launch(uint32_t theTimeSlice);
  If the file doesn't exist, it will create a new file with the name
  * @param  name file name is an ASCII string up to seven characters
  * @return 0 if successful and 1 on failure (e.g., can't open)
- * @brief  redirect printf output into this file
+ * @brief  redirect printf output into this file (Lab 4)
  */
-int OS_RedirectToFile(char *name);
-
+int OS_RedirectToFile(const char *name);
 
 /**
  * @details close the file for writing, redirect stream I/O (printf) back to the UART
  * @param  none
  * @return 0 if successful and 1 on failure (e.g., trouble writing)
- * @brief  Stop streaming printf to file
+ * @brief  Stop streaming printf to file (Lab 4)
  */
 int OS_EndRedirectToFile(void);
 

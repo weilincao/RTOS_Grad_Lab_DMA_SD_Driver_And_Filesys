@@ -891,10 +891,21 @@ void OS_Launch(uint32_t theTimeSlice){
 	StartOS(); // start on the first task    
 };
 
-//******** I/O Redirection *************** 
-// redirect terminal I/O to UART
+//************** I/O Redirection *************** 
+// redirect terminal I/O to UART or file (Lab 4)
+
+int StreamToDevice=0;                // 0=UART, 1=stream to file (Lab 4)
 
 int fputc (int ch, FILE *f) { 
+  if(StreamToDevice==1){  // Lab 4
+    if(eFile_Write(ch)){          // close file on error
+       OS_EndRedirectToFile(); // cannot write to file
+       return 1;                  // failure
+    }
+    return 0; // success writing
+  }
+  
+  // default UART output
   UART_OutChar(ch);
   return ch; 
 }
@@ -904,21 +915,26 @@ int fgetc (FILE *f){
   UART_OutChar(ch);         // echo
   return ch;
 }
-int OS_RedirectToFile(char *name){
-  
-  return 1;
+
+int OS_RedirectToFile(const char *name){  // Lab 4
+  eFile_Create(name);              // ignore error if file already exists
+  if(eFile_WOpen(name)) return 1;  // cannot open file
+  StreamToDevice = 1;
+  return 0;
 }
+
+int OS_EndRedirectToFile(void){  // Lab 4
+  StreamToDevice = 0;
+  if(eFile_WClose()) return 1;    // cannot close file
+  return 0;
+}
+
 int OS_RedirectToUART(void){
-  
-  return 1;
+  StreamToDevice = 0;
+  return 0;
 }
 
 int OS_RedirectToST7735(void){
-  
-  return 1;
-}
-
-int OS_EndRedirectToFile(void){
   
   return 1;
 }
