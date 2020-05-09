@@ -516,7 +516,68 @@ int Testmain2(void){   // Testmain2
   return 0;               // this never executes
 }
 
+uint8_t test_buffer[512];
+uint32_t read_finish_time;
+void DMA_read_thread()
+{
+	eFile_Init();
+	//DMA_SD_Read(0,test_buffer,0,1);// perform a dry first block read, because the first block read always failed in experience
+	/*
+	for(int i =0 ; i <20 ; i++)
+	{
+		DMA_SD_Read(0,test_buffer,0,1);
+	}
+	*/
+	read_finish_time=OS_Time();
+	OS_Kill();
+}
+
+void normal_read_thread()
+{
+	eDisk_Init(0);
+	//for(int i =0 ; i <20 ; i++)
+	//{
+	//	eDisk_Read(0,test_buffer,0,1);
+	//}
+	//read_finish_time=OS_Time();
+	OS_Kill();
+}
+uint32_t finish_time=0;
+void task_thread()
+{
+	int j = 0;
+	for(int i =0 ; i<1000000; i++)
+	{
+		j++;
+	}
+	finish_time=OS_Time();
+	OS_Kill();
+}
+
+int DMAmain(void){        // lab 4 real main
+  OS_Init();           // initialize, disable interrupts
+  PortD_Init();        // user debugging profile
+  Running = 0;         // robot not running
+  DataLost = 0;        // lost data between producer and consumer
+  NumSamples = 0;
+  IdleCount = 0;
+  
+  // initialize communication channels
+  OS_Fifo_Init(64);    
+
+  // attach background tasks
+  OS_AddPeriodicThread(&disk_timerproc,TIME_1MS,5);   // time-out routines for disk
+  // create initial foreground threads
+  NumCreated = 0 ;
+	NumCreated += OS_AddThread(&DMA_read_thread,128,2);
+	//NumCreated += OS_AddThread(&task_thread,128,3);
+  NumCreated += OS_AddThread(&Interpreter,128,4); 
+  NumCreated += OS_AddThread(&Idle,128,5);  // runs when nothing useful to do
+	
+  OS_Launch(TIMESLICE); // doesn't return, interrupts enabled in here
+  return 0;             // this never executes
+}
 //*******************Trampoline for selecting main to execute**********
 int main(void) { 			// main
-  realmain();
+  DMAmain();
 }

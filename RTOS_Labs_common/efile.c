@@ -9,7 +9,7 @@
 #include "../RTOS_Labs_common/eFile.h"
 #include "../RTOS_Labs_common/UART0int.h"
 #include <stdio.h>
-
+#define EFILE_DEBUG 1
 FAT_entry FAT[NUMBER_OF_FAT_ENTRY]; // This is the RAM copy of the FAT.
 DT_entry DT[MAX_NUMBER_OF_FILES]; // This is the RAM copy of the directory.
 unsigned char FILE_BLOCK[BLOCK_SIZE];
@@ -21,7 +21,8 @@ uint8_t MOUNTED = 0;
 // Input: none
 // Output: 0 if successful and 1 on failure (already initialized)
 int eFile_Init(void){ // initialize file system
-	eDisk_Init(0);
+	//eDisk_Init(0);
+	DMA_SD_Init();
 	for(int i=0; i<NUMBER_OF_FAT_ENTRY;i++){
 		FAT[i].next_entry=0;
 	}
@@ -42,7 +43,7 @@ int eFile_Format(void){ // erase disk, add format
 		empty_block[i]=0;
 	}
 	for(int i = 0; i < NUMBER_OF_FAT_ENTRY; i++){
-		eDisk_Write(0,empty_block,i,1);
+		DMA_SD_Write(0,empty_block,i,1);
 	}
 	memset(&DT, 0, DT_SIZE);
 	memset(&FAT, 0, FAT_SIZE);
@@ -57,8 +58,8 @@ int eFile_Format(void){ // erase disk, add format
 			FAT[i].next_entry = 0;
 		}
 	}
-	eDisk_Write(0,(unsigned char *)DT, 0, 1);
-	eDisk_Write(0,(unsigned char *)FAT, 1, 4);
+	DMA_SD_Write(0,(unsigned char *)DT, 0, 1);
+	DMA_SD_Write(0,(unsigned char *)FAT, 1, 4);
 	//eFile_Mount();
   return 0;
 }
@@ -68,8 +69,27 @@ int eFile_Format(void){ // erase disk, add format
 // Input: none
 // Output: 0 if successful and 1 on failure
 int eFile_Mount(void){ // initialize file system
-	eDisk_Read(0,(unsigned char*)DT,0,1);
-	eDisk_Read(0,(unsigned char*)FAT,1,4);
+	int status;
+	status=eDisk_Read(0,(unsigned char*)DT,0,1);
+	if(status)
+	{
+		#ifdef EFILE_DEBUG
+		UART_OutString("\n\rDT loading fail, error code: ");
+		UART_OutUDec(status);
+		UART_OutString("\n\r");
+		#endif
+		return 1;
+	}
+	status=eDisk_Read(0,(unsigned char*)FAT,1,4);
+	if(status)
+	{
+		#ifdef EFILE_DEBUG
+		UART_OutString("\n\rFAT loading fail, error code: ");
+		UART_OutUDec(status);
+		UART_OutString("\n\r");
+		#endif
+		return 1;
+	}
 	MOUNTED = 1;
   return 0;
 }
@@ -101,8 +121,8 @@ int eFile_Create(const char name[]){  // create new file, make it empty
 			} else {
 				return -1; // No empty blocks
 			}
-			eDisk_Write(0,(unsigned char*)DT, 0, 1);
-			eDisk_Write(0,(unsigned char*)FAT, 1, 4);
+			DMA_SD_Write(0,(unsigned char*)DT, 0, 1);
+			DMA_SD_Write(0,(unsigned char*)FAT, 1, 4);
 			return 0;
 		}
 	}
@@ -159,7 +179,7 @@ int eFile_Write(const char data){
 	int location = DT[opened_file_index].file_size%BLOCK_SIZE;
 	if(location == 0 && DT[opened_file_index].file_size != 0){ //we need to append a free block because the current block is full
 		if(DT[0].starting_block != 0){ // We have a free block we can append
-			eDisk_Write(0, FILE_BLOCK, FILE_BLOCK_NUM, 1);
+			DMA_SD_Write(0, FILE_BLOCK, FILE_BLOCK_NUM, 1);
 			for(int i = 0; i < BLOCK_SIZE; i++){
 				FILE_BLOCK[i] = 0;
 			}
@@ -189,13 +209,13 @@ int eFile_WClose(void){ // close the file for writing
 		return -1;
 	}
 	int code = 0;
-  if((code = eDisk_Write(0,(unsigned char *)DT,0,1))){
+  if((code = DMA_SD_Write(0,(unsigned char *)DT,0,1))){
 		return code;
 	}
-	if((code = eDisk_Write(0,(unsigned char *)FAT,1,4))){
+	if((code = DMA_SD_Write(0,(unsigned char *)FAT,1,4))){
 		return code;
 	}
-	if((code = eDisk_Write(0, FILE_BLOCK, FILE_BLOCK_NUM ,1))){
+	if((code = DMA_SD_Write(0, FILE_BLOCK, FILE_BLOCK_NUM ,1))){
 		return code;
 	}	
 	
@@ -203,7 +223,33 @@ int eFile_WClose(void){ // close the file for writing
 	file_permission = READ;
   return 0;
 }
-
+int eFile_DMAWClose(void){ // close the file for writing
+	if(!MOUNTED){
+		eFile_Mount();
+	}
+	if(opened_file_index == -1){ 
+		return -1;
+	}
+	int code = 0;
+  if((code = DMA_SD_Write(0,(unsigned char *)DT,0,1))){
+		return code;
+	}
+	if((code = DMA_SD_Write(0,(unsigned char *)FAT,1,4))){
+		return code;
+	}
+	if((code = DMA_SD_Write(0, FILE_BLOCK, FILE_BLOCK_NUM ,1))){
+		#ifdef EFILE_DEBUG
+		UART_OutString("\n\r DAM write block in wclose fail, error code: ");
+		UART_OutUDec(code);
+		UART_OutString("\n\r");
+		#endif
+		return code;
+	}	
+	
+	opened_file_index = -1;
+	file_permission = READ;
+  return 0;
+}
 
 //---------- eFile_ROpen-----------------
 // Open the file, read first block into RAM 
@@ -224,7 +270,16 @@ int eFile_ROpen( const char name[]){      // open a file for reading
 		}
 	}
 	int curr = DT[opened_file_index].starting_block;
-	eDisk_Read(0,FILE_BLOCK, curr,1); // Reads last block of file into RAM buffer.
+	int status = eDisk_Read(0,FILE_BLOCK, curr,1); // Reads last block of file into RAM buffer.
+	if(status)
+	{
+		#ifdef EFILE_DEBUG
+		UART_OutString("\n\r ropen failed!, error code: ");
+		UART_OutUDec(status);
+		UART_OutString("\n\r");
+		#endif
+		return 1;
+	}
 	FILE_BLOCK_NUM = curr;
   return 0; 
 }
@@ -289,7 +344,7 @@ int eFile_Delete( const char name[]){  // remove this file
 			FAT[curr].next_entry = DT[i].starting_block; // Appends file's block list to free block list
 			DT[i].starting_block = 0;
 			int code = 0;
-			code = eDisk_Write(0, (unsigned char *)DT, 0, 1) || eDisk_Write(0, (unsigned char *)FAT, 1, 4); // Write FAT and directory back to disk.
+			code = DMA_SD_Write(0, (unsigned char *)DT, 0, 1) || DMA_SD_Write(0, (unsigned char *)FAT, 1, 4); // Write FAT and directory back to disk.
 			return code;
 		}
 	}
@@ -334,7 +389,7 @@ int eFile_DClose(void){ // close the directory
 // Output: 0 if successful and 1 on failure (not currently open)
 int eFile_Close(void){ 
 	int code = 0;
-	code = eDisk_Write(0, (unsigned char *)DT, 0, 1) || eDisk_Write(0, (unsigned char *)FAT, 1, 4); // Write FAT and directory back to disk.
+	code = DMA_SD_Write(0, (unsigned char *)DT, 0, 1) || DMA_SD_Write(0, (unsigned char *)FAT, 1, 4); // Write FAT and directory back to disk.
 	MOUNTED = 0;
 	return code;
 }

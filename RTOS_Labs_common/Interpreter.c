@@ -228,6 +228,33 @@ void Interpreter(void){
 				eFile_WClose();
 			}
 		}
+		else if(strncmp(cmd,"DMAecho",strlen("echo"))==0){	//used for write things into file
+			char data;
+			if(args_num==1)
+				UART_OutString(args[0]);
+			if(args_num==3 && strcmp(args[1],">>")==0)
+			{
+				eFile_Mount();
+				eFile_WOpen(args[2]);
+				//UART_OutString(args[2]);
+				for(int i =0 ; i < strlen(args[0]) ; i ++)
+				{
+						eFile_Write(args[0][i]);
+						//UART_OutChar(args[0][i]);
+				}
+				eFile_DMAWClose();
+			}
+		}
+		else if(strncmp(cmd,"block_write",strlen("block_write"))==0){
+			uint8_t buff[512];
+			memset(buff,0xFF,512 );
+			eDisk_Write(0, buff, 20, 1);
+		}
+		else if(strncmp(cmd,"dma_write",strlen("dma_write"))==0){
+			uint8_t buff[516];
+			memset(buff,0xFF,516 );
+			DMA_SD_Write(0, buff, 20, 1);
+		}
 		else if(strncmp(cmd,"format",strlen("format"))==0){	//used for write things into file
 			eFile_Mount();
 			eFile_Format();

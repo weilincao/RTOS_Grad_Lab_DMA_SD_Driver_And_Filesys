@@ -80,7 +80,7 @@ int eFile_WOpen(const char name[]);      // open a file for writing
  * @brief  Format the disk
  */
 int eFile_Write(const char data);  
-
+int eFile_DMAWClose(void);
 /**
  * @details Close the file, leave disk in a state power can be removed.
  * This function will flush all RAM buffers to the disk.

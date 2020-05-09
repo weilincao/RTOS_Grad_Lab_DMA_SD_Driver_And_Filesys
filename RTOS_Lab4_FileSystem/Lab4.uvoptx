@@ -156,120 +156,110 @@
         <Bp>
           <Number>0</Number>
           <Type>0</Type>
-          <LineNumber>902</LineNumber>
+          <LineNumber>906</LineNumber>
           <EnabledFlag>1</EnabledFlag>
-          <Address>16734</Address>
+          <Address>3216</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
           <SizeOfObject>0</SizeOfObject>
           <BreakByAccess>0</BreakByAccess>
           <BreakIfRCount>1</BreakIfRCount>
-          <Filename>..\RTOS_Labs_common\OS.c</Filename>
+          <Filename>..\RTOS_Labs_common\eDisk.c</Filename>
           <ExecCommand></ExecCommand>
-          <Expression>\\Lab4\../RTOS_Labs_common/OS.c\902</Expression>
+          <Expression>\\\../RTOS_Labs_common/eDisk.c\906</Expression>
         </Bp>
       </Breakpoint>
       <WatchWindow1>
         <Ww>
           <count>0</count>
           <WinNumber>1</WinNumber>
-          <ItemText>Time</ItemText>
+          <ItemText>RunPt</ItemText>
         </Ww>
         <Ww>
           <count>1</count>
           <WinNumber>1</WinNumber>
-          <ItemText>Time2</ItemText>
+          <ItemText>NumSamples,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>2</count>
           <WinNumber>1</WinNumber>
-          <ItemText>RunPt</ItemText>
+          <ItemText>NumCreated</ItemText>
         </Ww>
         <Ww>
           <count>3</count>
           <WinNumber>1</WinNumber>
-          <ItemText>NumSamples,0x0A</ItemText>
+          <ItemText>Stacks</ItemText>
         </Ww>
         <Ww>
           <count>4</count>
           <WinNumber>1</WinNumber>
-          <ItemText>NumCreated</ItemText>
+          <ItemText>DataLost,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>5</count>
           <WinNumber>1</WinNumber>
-          <ItemText>Stacks</ItemText>
+          <ItemText>Directory</ItemText>
         </Ww>
         <Ww>
           <count>6</count>
           <WinNumber>1</WinNumber>
-          <ItemText>DataLost,0x0A</ItemText>
+          <ItemText>DT</ItemText>
         </Ww>
         <Ww>
           <count>7</count>
           <WinNumber>1</WinNumber>
-          <ItemText>Directory</ItemText>
+          <ItemText>FAT</ItemText>
         </Ww>
         <Ww>
           <count>8</count>
           <WinNumber>1</WinNumber>
-          <ItemText>DT</ItemText>
+          <ItemText>FILE_BLOCK</ItemText>
         </Ww>
         <Ww>
           <count>9</count>
           <WinNumber>1</WinNumber>
-          <ItemText>FAT</ItemText>
+          <ItemText>ucControlTable</ItemText>
         </Ww>
         <Ww>
           <count>10</count>
           <WinNumber>1</WinNumber>
-          <ItemText>FILE_BLOCK</ItemText>
+          <ItemText>status</ItemText>
+        </Ww>
+        <Ww>
+          <count>11</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>DMA_status</ItemText>
+        </Ww>
+        <Ww>
+          <count>12</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>finish_time</ItemText>
+        </Ww>
+        <Ww>
+          <count>13</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>read_finish_time</ItemText>
         </Ww>
       </WatchWindow1>
       <WatchWindow2>
         <Ww>
           <count>0</count>
           <WinNumber>2</WinNumber>
-          <ItemText>Count1</ItemText>
+          <ItemText>Lost</ItemText>
         </Ww>
         <Ww>
           <count>1</count>
           <WinNumber>2</WinNumber>
-          <ItemText>Count2</ItemText>
+          <ItemText>dt</ItemText>
         </Ww>
         <Ww>
           <count>2</count>
           <WinNumber>2</WinNumber>
-          <ItemText>Count3</ItemText>
-        </Ww>
-        <Ww>
-          <count>3</count>
-          <WinNumber>2</WinNumber>
-          <ItemText>Count4</ItemText>
-        </Ww>
-        <Ww>
-          <count>4</count>
-          <WinNumber>2</WinNumber>
-          <ItemText>Count5</ItemText>
-        </Ww>
-        <Ww>
-          <count>5</count>
-          <WinNumber>2</WinNumber>
-          <ItemText>Lost</ItemText>
-        </Ww>
-        <Ww>
-          <count>6</count>
-          <WinNumber>2</WinNumber>
-          <ItemText>dt</ItemText>
-        </Ww>
-        <Ww>
-          <count>7</count>
-          <WinNumber>2</WinNumber>
           <ItemText>dtmax,0x0A</ItemText>
         </Ww>
         <Ww>
-          <count>8</count>
+          <count>3</count>
           <WinNumber>2</WinNumber>
           <ItemText>dtsum,0x0A</ItemText>
         </Ww>
@@ -277,8 +267,8 @@
       <MemoryWindow1>
         <Mm>
           <WinNumber>1</WinNumber>
-          <SubType>2</SubType>
-          <ItemText>0x200001fc</ItemText>
+          <SubType>0</SubType>
+          <ItemText>0x20006800</ItemText>
           <AccSizeX>0</AccSizeX>
         </Mm>
       </MemoryWindow1>
@@ -286,7 +276,7 @@
         <Mm>
           <WinNumber>2</WinNumber>
           <SubType>2</SubType>
-          <ItemText>tcbs</ItemText>
+          <ItemText>0x400FF028</ItemText>
           <AccSizeX>0</AccSizeX>
         </Mm>
       </MemoryWindow2>

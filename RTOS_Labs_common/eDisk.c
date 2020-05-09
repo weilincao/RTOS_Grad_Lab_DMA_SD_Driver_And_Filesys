@@ -719,3 +719,268 @@ void disk_timerproc(void){
   Stat = s;
 }
 
+/*
+the following section is written by Weilin Cao
+*/
+/*
+*for this program to work, the sd card will be using ssi0, so we need to use DMA channel 10 for SSI0 RX and channel 10 for SSI0 RX (both with encoding # 0)
+
+*for details, please see page 587 in tm4c123 user mannual.
+
+*additionally, the code might not be compatiable if you are using other DMA channel at the same time
+*/
+#include "OS.h"
+Sema4Type DMA_Sema;
+uint32_t ucControlTable[256] __attribute__ ((aligned(1024)));
+
+#define CHANNEL10_PRIMARY_INDEX (10*4) //each control table entry has 4*32 bit in size
+#define CHANNEL11_PRIMARY_INDEX (11*4) //each control table entry has 4*32 bit in size
+#define CHANNEL10_ALTERNATE_INDEX (10*4+128) //each control table entry has 4*32 bit in size
+#define CHANNEL11_ALTERNATE_INDEX (11*4+128) //each control table entry has 4*32 bit in size
+#define BIT10 0x00000400
+#define BIT11 0x00000800
+
+
+DSTATUS DMA_SD_Init(void){ // initialize file system
+	volatile uint32_t delay;
+  for(int i=0; i<256; i++){
+    ucControlTable[i] = 0;
+  }
+  SYSCTL_RCGCDMA_R = 0x01;    // µDMA Module Run Mode Clock Gating Control
+  delay = SYSCTL_RCGCDMA_R;   // allow time to finish 
+  UDMA_CFG_R = 0x01;          // MASTEN Controller Master Enable
+  UDMA_CTLBASE_R = (uint32_t)	ucControlTable;
+	UDMA_CHMAP1_R = (UDMA_CHMAP1_R&0xFFFF00FF)|0x00000000;  // CHMAP register select source of the DMA channel from 8 to 15, 
+																													// with each byte configure the each channel source, so the third and fourth byte is channel 10 and 11.
+																												// we want to select source 0, which is SSI0 TX and RX
+  //UDMA_PRIOSET_R = BIT10;     // set RX a high priority for TX;
+	UDMA_PRIOCLR_R = BIT10 | BIT11;     // default, not high priority, does not really matter
+	UDMA_ALTCLR_R = BIT10 | BIT11;      // use primary control, not alternative control
+	UDMA_USEBURSTCLR_R = BIT10 | BIT11 ; // responds to both burst and single requests for channel 10 & 11    
+	UDMA_REQMASKCLR_R = BIT10 | BIT11;  // allow the µDMA controller to recognize requests for channel 10 & 11
+
+	//UDMA_ENACLR_R  =  0xFFFF; //disable all channel for now, re-enable it when you want to start using it
+	//UDMA_ENACLR_R  =  BIT10 | BIT11; //disable both channel for now, re-enable it when you want to start using it
+	eDisk_Init(0); //should initialize the SSI
+
+	SSI0_DMACTL_R = 0x03; // last 2 bit enable both RX or TX DMA
+
+	OS_InitSemaphore(&DMA_Sema, 0);
+  return 0;
+}
+
+#define SSI0_DR ((volatile uint32_t *)0x40008008)
+uint8_t garbage_data =0xFF;
+int DMA_rcvr_datablock(BYTE* buff, uint32_t block_size)
+{
+	BYTE token;
+  Timer1 = 200;
+  do {              /* Wait for DataStart token in timeout of 200ms */
+    token = xchg_spi(0xFF);
+    /* This loop will take a time. Insert rot_rdq() here for multitask envilonment. */
+  } while ((token == 0xFF) && Timer1);
+  if(token != 0xFE) return 0;    /* Function fails if invalid DataStart token or timeout */
+	uint32_t control10=ucControlTable[CHANNEL10_PRIMARY_INDEX+2];
+	uint32_t control11=ucControlTable[CHANNEL11_PRIMARY_INDEX+2];
+	uint32_t ssi_mask=SSI0_IM_R;
+	uint32_t fifo_status=SSI0_SR_R;
+	uint32_t dma_status=UDMA_STAT_R;
+	uint32_t wait_on_request=UDMA_WAITSTAT_R;
+	uint32_t interrupt_status=UDMA_CHIS_R;
+
+																						
+
+	SSI0_IM_R = 0x00000000;					//only allows the RX to interrupt for transfer completion
+	NVIC_EN0_R = 0x0000080;         // 9) enable SSI0 (interrupt 7) in NVIC, which is bit 7 in the en0 register
+	ucControlTable[CHANNEL10_PRIMARY_INDEX]=(uint32_t)SSI0_DR;//first 32 bit is the Source end pointer, which is SSI0 in this case
+	ucControlTable[CHANNEL10_PRIMARY_INDEX+1]=(uint32_t)(buff+512-1);//second 32 bit is the Destination end pointer;
+	ucControlTable[CHANNEL10_PRIMARY_INDEX+2]=						//third 32 bit is the control word:
+																							(0x0<<30) //destination should increment by 1 byte every time
+																						|(0x0<<28) //destination data size is 1 byte
+																						|(0x3<<26) //source should not increment address because that is SSI0 data register
+																						|(0x0<<24) //source data size should also be 1 byte
+																						|(0x0<<14) //arbitration size, chosen every transfers, but really does not matter
+																						|((512-1)<<4) //subrate 1 is needed because a value of 0 means 1 item, max is 1024, but regular block size should be 512, so it is fine 
+																						//| (1<<3) //used for automative useburst setting, does not matter
+																						|(0x1); // basic request mode, for request that last as long as item exist
+	/*
+	ucControlTable[CHANNEL11_PRIMARY_INDEX]=(uint32_t)&garbage_data;//first 32 bit is the Source end pointer, which is the garbage data
+	ucControlTable[CHANNEL11_PRIMARY_INDEX+1]=(uint32_t)SSI0_DR;//second 32 bit is the Destination end pointer, which is the SSI0 data register
+	ucControlTable[CHANNEL11_PRIMARY_INDEX+2]=						//third 32 bit is the control word:
+																							(0x3<<30) //destination should not increment
+																						|(0x0<<28) //destination data size is 1 byte
+																						|(0x3<<26) //source should not increment address because that is SSI0 data register
+																						|(0x0<<24) //source data size should also be 1 byte
+																						|(0x0<<14) //arbitration size, chosen every transfers, but really does not matter
+																						|((512-1)<<4) //subrate 1 is needed because a value of 0 means 1 item, max is 1024, but regular block size should be 512, so it is fine 
+																						//| (1<<3) //used for automative useburst setting, does not matter
+																						|(0x1); // basic request mode, for request that last as long as item exist
+
+	*/
+	UDMA_ENASET_R  =  BIT10 ; //enable channel 10 for SSI0 RX
+
+	for(int i =0 ; i <512; i++)
+	{
+		while((SSI0_SR_R&SSI_SR_BSY)==SSI_SR_BSY){};
+		SSI0_DR_R = 0xFF;                     // data out, garbage
+	}
+	xchg_spi(0xFF); xchg_spi(0xFF);      /* Discard CRC */
+	OS_Wait(&DMA_Sema);	
+
+	return 1;
+}
+
+DRESULT DMA_SD_Read(BYTE drv, BYTE *buff, DWORD sector, UINT count){
+  if (drv || !count) return RES_PARERR;    /* Check parameter */
+  if (Stat & STA_NOINIT) return RES_NOTRDY;  /* Check if drive is ready */
+  if (!(CardType & CT_BLOCK)) sector *= 512;  /* LBA ot BA conversion (byte addressing cards) */
+
+  if (count == 1) {  /* Single sector read */
+    if ((send_cmd(CMD17, sector) == 0)  /* READ_SINGLE_BLOCK */
+      && DMA_rcvr_datablock(buff, 512))
+      count = 0;
+  }
+  else {        /* Multiple sector read */
+    if (send_cmd(CMD18, sector) == 0) {  /* READ_MULTIPLE_BLOCK */
+      do {
+        if (!DMA_rcvr_datablock(buff, 512)) break;
+        buff += 512;
+      } while (--count);
+      send_cmd(CMD12, 0);        /* STOP_TRANSMISSION */
+    }
+  }
+  deselect();
+
+  return count ? RES_ERROR : RES_OK;  /* Return result */
+}
+
+
+
+static void DMA_xmit_spi_multi(const BYTE *buff, UINT btx){
+  BYTE volatile rcvdat;
+	SSI0_IM_R = 0x00000000;					//disable all other interrupt
+	NVIC_EN0_R = 0x0000080;         // 9) enable SSI0 (interrupt 7) in NVIC, which is bit 7 in the en0 register
+	ucControlTable[CHANNEL11_PRIMARY_INDEX]=(uint32_t)buff+512-1;//source end pointer
+	ucControlTable[CHANNEL11_PRIMARY_INDEX+1]=(uint32_t)SSI0_DR;//second 32 bit is the Destination end pointer, which is the SSI0 data register
+	ucControlTable[CHANNEL11_PRIMARY_INDEX+2]=						//third 32 bit is the control word:
+																							(0x3<<30) //destination should  not increment, it is the ssi0
+																						|(0x0<<28) //destination data size is 1 byte
+																						|(0x0<<26) //source should increment one byte at a time, it is the buff
+																						|(0x0<<24) //source data size should also be 1 byte
+																						|(0x0<<14) //arbitration size, chosen every transfers, but really does not matter
+																						|((512-1)<<4) //subrate 1 is needed because a value of 0 means 1 item, max is 1024, but regular block size should be 512, so it is fine 
+																						//| (1<<3) //used for automative useburst setting, does not matter
+																						|(0x1); // basic request mode, for request that last as long as item exist
+
+	UDMA_ENASET_R  =  BIT11 ; //enable channel 11 for SSI0 TX
+	
+	OS_Wait(&DMA_Sema);	
+}
+
+static int DMA_xmit_datablock(const BYTE *buff, BYTE token){
+  BYTE resp;
+	BYTE resp0;
+	BYTE resp1;
+  if (!wait_ready(500)) return 0;    /* Wait for card ready */
+
+  xchg_spi(token);                   /* Send token */
+  if (token != 0xFD) {               /* Send data if token is other than StopTran */
+    DMA_xmit_spi_multi(buff, 512);       /* Data */
+    int j;
+		int response[10];
+		int status0, status1;
+		int status[10];
+		status0=SSI0_SR_R;
+		while((SSI0_SR_R&0x10)==0x10){}//wait until it is not busy
+		status1=SSI0_SR_R;
+		for(int i =0 ; i < 8; i++)//empty the RX fifo junk
+		{
+			response[i]=SSI0_DR_R;
+			status[i]=SSI0_SR_R;
+		}
+		resp0=xchg_spi(0xFF);
+		resp1=xchg_spi(0xFF);  /* Dummy CRC */
+    resp=xchg_spi(0xFF);        /* Receive data resp */
+		j++;
+		j++;
+		j++;
+    if ((resp & 0x1F) != 0x05)    /* Function fails if the data packet was not accepted */
+      return 0;
+  }
+  return 1;
+}
+
+DRESULT DMA_SD_Write(BYTE drv, const BYTE *buff, DWORD sector, UINT count)
+{
+  if (drv || !count) return RES_PARERR;    /* Check parameter */
+  if (Stat & STA_NOINIT) return RES_NOTRDY;  /* Check drive status */
+  if (Stat & STA_PROTECT) return RES_WRPRT;  /* Check write protect */
+
+  if (!(CardType & CT_BLOCK)) sector *= 512;  /* LBA ==> BA conversion (byte addressing cards) */
+
+  if (count == 1) {  /* Single sector write */
+    if ((send_cmd(CMD24, sector) == 0)  /* WRITE_BLOCK */
+      && DMA_xmit_datablock(buff, 0xFE))
+      count = 0;
+  }
+  else {        /* Multiple sector write */
+    if (CardType & CT_SDC) send_cmd(ACMD23, count);  /* Predefine number of sectors */
+    if (send_cmd(CMD25, sector) == 0) {  /* WRITE_MULTIPLE_BLOCK */
+      do {
+        if (!DMA_xmit_datablock(buff, 0xFC)) break;
+        buff += 512;
+      } while (--count);
+      if (!DMA_xmit_datablock(0, 0xFD))  /* STOP_TRAN token */
+        count = 1;
+    }
+  }
+  deselect();
+
+  return count ? RES_ERROR : RES_OK;  /* Return result */
+}
+
+void SSI0_Handler()//will be called whenever the transfer/receive is finished
+{	
+	int j;
+	uint32_t control10=ucControlTable[CHANNEL10_PRIMARY_INDEX+2];
+	uint32_t control11=ucControlTable[CHANNEL11_PRIMARY_INDEX+2];
+	uint32_t ssi_mask=SSI0_IM_R;
+	uint32_t fifo_status=SSI0_SR_R;
+	uint32_t dma_status=UDMA_STAT_R;
+	uint32_t wait_on_request=UDMA_WAITSTAT_R;
+	uint32_t interrupt_status=UDMA_CHIS_R;
+	j++;
+	j++;
+	j++;
+	if( (interrupt_status&0x800)==0x800)//bit 11 interrupted
+	{
+		UDMA_ENACLR_R  = BIT11;// disable the RX and TX channel first.
+		UDMA_CHIS_R = BIT11;//clear interrupt for TX
+	
+		OS_Signal(&DMA_Sema);
+	}
+	if ((interrupt_status&0x400)==0x400)//bit 10 interrupted, read is completed
+	{
+		UDMA_ENACLR_R  =  BIT10;// disable the RX and TX channel first.
+		UDMA_CHIS_R = BIT10; //clear the interrupt bit by writing 1 to it. because you will not read or write at the same time, so it is okay to just clear both bit at once.
+		OS_Signal(&DMA_Sema); //signal the completion of a read/write process
+	}
+	interrupt_status=UDMA_CHIS_R;
+	j++;
+	j++;
+	j++;
+	/*
+	if((ucControlTable[CHANNEL11_PRIMARY_INDEX+2]&0x7)==0)
+	{
+	}
+	if((ucControlTable[CHANNEL10_PRIMARY_INDEX+2]&0x7)==0){
+		UDMA_ENACLR_R  =  BIT10;// disable the RX and TX channel first.
+		UDMA_CHIS_R = BIT10; //clear the interrupt bit by writing 1 to it. because you will not read or write at the same time, so it is okay to just clear both bit at once.
+		OS_Signal(&DMA_Sema); //signal the completion of a read/write process
+	}
+	*/
+}
+
+void uDMA_Handler()
+{
+}

@@ -90,7 +90,7 @@ typedef enum {
  * @brief  Initialize the interface between microcontroller and the SD card.
  */
 DSTATUS eDisk_Init(BYTE drive);
-
+DSTATUS DMA_SD_Init();
 /**
  * @details  Checks the status of the secure digital care.
 <table>
@@ -132,7 +132,7 @@ DRESULT eDisk_Read (
   BYTE *buff,   // Pointer to buffer to read data
   DWORD sector, // Start sector number (LBA)
   UINT count);  // Sector count (1..255)
-
+DRESULT DMA_SD_Read(BYTE drv, BYTE *buff, DWORD sector, UINT count);
 /**
  * @details  Read one block from the SD card  (write to RAM)
 <table>
@@ -179,6 +179,7 @@ DRESULT eDisk_Write (
   const BYTE *buff, // Pointer to the data to be written
   DWORD sector,     // Start sector number (LBA)
   UINT count);      // Sector count (1..255)
+DRESULT DMA_SD_Write(BYTE drv, const BYTE *buff, DWORD sector, UINT count);
 
 
 /**
