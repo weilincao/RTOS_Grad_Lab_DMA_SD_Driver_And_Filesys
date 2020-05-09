@@ -70,7 +70,7 @@ int eFile_Format(void){ // erase disk, add format
 // Output: 0 if successful and 1 on failure
 int eFile_Mount(void){ // initialize file system
 	int status;
-	status=eDisk_Read(0,(unsigned char*)DT,0,1);
+	status=DMA_SD_Read(0,(unsigned char*)DT,0,1);
 	if(status)
 	{
 		#ifdef EFILE_DEBUG
@@ -80,7 +80,7 @@ int eFile_Mount(void){ // initialize file system
 		#endif
 		return 1;
 	}
-	status=eDisk_Read(0,(unsigned char*)FAT,1,4);
+	status=DMA_SD_Read(0,(unsigned char*)FAT,1,4);
 	if(status)
 	{
 		#ifdef EFILE_DEBUG
@@ -159,7 +159,16 @@ int eFile_WOpen( const char name[]){      // open a file for writing
 		curr = FAT[curr].next_entry;
 	}
 	
-	eDisk_Read(0,FILE_BLOCK, curr,1); // Reads last block of file into RAM buffer.
+	int status=DMA_SD_Read(0,FILE_BLOCK, curr,1); // Reads last block of file into RAM buffer.
+	if(status)
+	{
+		#ifdef EFILE_DEBUG
+		UART_OutString("\n\r Wopen failed!, error code: ");
+		UART_OutUDec(status);
+		UART_OutString("\n\r");
+		#endif
+		return 1;
+	}
 	FILE_BLOCK_NUM = curr;
   return 0;
 }
@@ -210,12 +219,27 @@ int eFile_WClose(void){ // close the file for writing
 	}
 	int code = 0;
   if((code = DMA_SD_Write(0,(unsigned char *)DT,0,1))){
+		#ifdef EFILE_DEBUG
+		UART_OutString("\n\r DAM write DT in wclose fail, error code: ");
+		UART_OutUDec(code);
+		UART_OutString("\n\r");
+		#endif
 		return code;
 	}
 	if((code = DMA_SD_Write(0,(unsigned char *)FAT,1,4))){
+		#ifdef EFILE_DEBUG
+		UART_OutString("\n\r DAM write FAT in wclose fail, error code: ");
+		UART_OutUDec(code);
+		UART_OutString("\n\r");
+		#endif
 		return code;
 	}
 	if((code = DMA_SD_Write(0, FILE_BLOCK, FILE_BLOCK_NUM ,1))){
+		#ifdef EFILE_DEBUG
+		UART_OutString("\n\r DAM write block in wclose fail, error code: ");
+		UART_OutUDec(code);
+		UART_OutString("\n\r");
+		#endif
 		return code;
 	}	
 	
@@ -270,7 +294,7 @@ int eFile_ROpen( const char name[]){      // open a file for reading
 		}
 	}
 	int curr = DT[opened_file_index].starting_block;
-	int status = eDisk_Read(0,FILE_BLOCK, curr,1); // Reads last block of file into RAM buffer.
+	int status = DMA_SD_Read(0,FILE_BLOCK, curr,1); // Reads last block of file into RAM buffer.
 	if(status)
 	{
 		#ifdef EFILE_DEBUG
@@ -304,7 +328,7 @@ int eFile_ReadNext( char *pt){       // get next byte
 	file_cursor++;
 	if(file_cursor % BLOCK_SIZE == 0 ){ // Check to see if we need to load in the next block
 		FILE_BLOCK_NUM = FAT[FILE_BLOCK_NUM].next_entry;
-		eDisk_Read(0, FILE_BLOCK, FILE_BLOCK_NUM, 1); // Loads next block into RAM
+		DMA_SD_Read(0, FILE_BLOCK, FILE_BLOCK_NUM, 1); // Loads next block into RAM
 	}
   return 0;
 }

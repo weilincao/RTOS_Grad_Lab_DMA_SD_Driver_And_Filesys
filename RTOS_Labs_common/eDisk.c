@@ -584,7 +584,7 @@ DRESULT eDisk_Write(BYTE drv, const BYTE *buff, DWORD sector, UINT count){
     }
   }
   deselect();
-
+	
   return count ? RES_ERROR : RES_OK;  /* Return result */
 }
 //*************** eDisk_WriteBlock ***********
@@ -768,7 +768,7 @@ DSTATUS DMA_SD_Init(void){ // initialize file system
 	OS_InitSemaphore(&DMA_Sema, 0);
   return 0;
 }
-
+Sema4Type DMA_read_done;
 #define SSI0_DR ((volatile uint32_t *)0x40008008)
 uint8_t garbage_data =0xFF;
 int DMA_rcvr_datablock(BYTE* buff, uint32_t block_size)
@@ -780,16 +780,18 @@ int DMA_rcvr_datablock(BYTE* buff, uint32_t block_size)
     /* This loop will take a time. Insert rot_rdq() here for multitask envilonment. */
   } while ((token == 0xFF) && Timer1);
   if(token != 0xFE) return 0;    /* Function fails if invalid DataStart token or timeout */
+	int j;
 	uint32_t control10=ucControlTable[CHANNEL10_PRIMARY_INDEX+2];
 	uint32_t control11=ucControlTable[CHANNEL11_PRIMARY_INDEX+2];
 	uint32_t ssi_mask=SSI0_IM_R;
 	uint32_t fifo_status=SSI0_SR_R;
-	uint32_t dma_status=UDMA_STAT_R;
 	uint32_t wait_on_request=UDMA_WAITSTAT_R;
-	uint32_t interrupt_status=UDMA_CHIS_R;
-
-																						
-
+	uint32_t interrupt_status=UDMA_CHIS_R;																			
+	uint32_t dma_status0=UDMA_STAT_R;
+	//while((SSI0_SR_R&0x1C)!=0)//empty the fifo if the DMA read somehow failed or misread a package
+	//{
+	//	j=SSI0_DR_R;
+	//}
 	SSI0_IM_R = 0x00000000;					//only allows the RX to interrupt for transfer completion
 	NVIC_EN0_R = 0x0000080;         // 9) enable SSI0 (interrupt 7) in NVIC, which is bit 7 in the en0 register
 	ucControlTable[CHANNEL10_PRIMARY_INDEX]=(uint32_t)SSI0_DR;//first 32 bit is the Source end pointer, which is SSI0 in this case
@@ -817,19 +819,38 @@ int DMA_rcvr_datablock(BYTE* buff, uint32_t block_size)
 																						|(0x1); // basic request mode, for request that last as long as item exist
 
 	*/
+	uint32_t fifo_status0=SSI0_SR_R;
+	while((SSI0_SR_R&SSI_SR_BSY)==SSI_SR_BSY){};
+		SSI0_DR_R = 0xFF;                     // data out, garbage
+	while((SSI0_SR_R&SSI_SR_BSY)==SSI_SR_BSY){};
+	uint32_t fifo_status1=SSI0_SR_R;
 	UDMA_ENASET_R  =  BIT10 ; //enable channel 10 for SSI0 RX
-
-	for(int i =0 ; i <512; i++)
+	j++;
+	j++;
+	j++;
+	for(int i =0 ; i <511; i++)
 	{
 		while((SSI0_SR_R&SSI_SR_BSY)==SSI_SR_BSY){};
 		SSI0_DR_R = 0xFF;                     // data out, garbage
 	}
-	xchg_spi(0xFF); xchg_spi(0xFF);      /* Discard CRC */
-	OS_Wait(&DMA_Sema);	
+	OS_Wait(&DMA_Sema);//wait for the DMA to finish
+	uint32_t fifo_status3=SSI0_SR_R;
+	while((SSI0_SR_R&SSI_SR_BSY)==SSI_SR_BSY){};
+	while((SSI0_SR_R&0x1C)!=0)//empty the fifo if the DMA read somehow failed or misread a package
+	{
+		while((SSI0_SR_R&SSI_SR_BSY)==SSI_SR_BSY){};
+		j=SSI0_DR_R;
+	}
+	while((SSI0_SR_R&SSI_SR_BSY)==SSI_SR_BSY){};
+	int crc1;
+	int crc2;
+	crc1=xchg_spi(0xFF); 
+	crc2=xchg_spi(0xFF);      /* Discard CRC */
+	uint32_t fifo_status4=SSI0_SR_R;
+
 
 	return 1;
 }
-
 DRESULT DMA_SD_Read(BYTE drv, BYTE *buff, DWORD sector, UINT count){
   if (drv || !count) return RES_PARERR;    /* Check parameter */
   if (Stat & STA_NOINIT) return RES_NOTRDY;  /* Check if drive is ready */
@@ -901,6 +922,7 @@ static int DMA_xmit_datablock(const BYTE *buff, BYTE token){
 		resp0=xchg_spi(0xFF);
 		resp1=xchg_spi(0xFF);  /* Dummy CRC */
     resp=xchg_spi(0xFF);        /* Receive data resp */
+
 		j++;
 		j++;
 		j++;
@@ -935,8 +957,8 @@ DRESULT DMA_SD_Write(BYTE drv, const BYTE *buff, DWORD sector, UINT count)
     }
   }
   deselect();
-
-  return count ? RES_ERROR : RES_OK;  /* Return result */
+	return 0;
+  //return count ? RES_ERROR : RES_OK;  /* Return result */
 }
 
 void SSI0_Handler()//will be called whenever the transfer/receive is finished

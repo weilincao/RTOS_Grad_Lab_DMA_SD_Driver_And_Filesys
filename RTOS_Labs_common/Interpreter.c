@@ -22,6 +22,7 @@
 #define UART_DEBUG 1
 extern uint32_t MaxJitter;
 extern uint32_t MaxJitter2;
+extern DT_entry DT[];
 // Print jitter histogram
 void Jitter(int32_t MaxJitter, uint32_t const JitterSize, uint32_t JitterHistogram[]){
 	
@@ -254,6 +255,32 @@ void Interpreter(void){
 			uint8_t buff[516];
 			memset(buff,0xFF,516 );
 			DMA_SD_Write(0, buff, 20, 1);
+		}
+		else if(strncmp(cmd,"block_read",strlen("block_read"))==0){
+			if(args_num==0)
+			{
+				uint8_t buff[512];
+				memset(buff,0xFF,512 );
+				eDisk_Read(0, (uint8_t*)DT, 0, 1);
+			}
+			else{
+				uint8_t buff[512];
+				memset(buff,0xFF,512 );
+				eDisk_Read(0, buff, atoi(args[0]), 1);
+			}
+		}
+		else if(strncmp(cmd,"dma_read",strlen("dma_read"))==0){
+			if(args_num==0)
+			{
+				uint8_t buff[512];
+				memset(buff,0xFF,512 );
+				DMA_SD_Read(0, (uint8_t*)DT, 0, 1);
+			}
+			else{
+				uint8_t buff[512];
+				memset(buff,0xFF,512 );
+				DMA_SD_Read(0, buff, atoi(args[0]), 1);
+			}
 		}
 		else if(strncmp(cmd,"format",strlen("format"))==0){	//used for write things into file
 			eFile_Mount();
