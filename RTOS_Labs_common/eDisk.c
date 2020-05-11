@@ -825,9 +825,6 @@ int DMA_rcvr_datablock(BYTE* buff, uint32_t block_size)
 	while((SSI0_SR_R&SSI_SR_BSY)==SSI_SR_BSY){};
 	uint32_t fifo_status1=SSI0_SR_R;
 	UDMA_ENASET_R  =  BIT10 ; //enable channel 10 for SSI0 RX
-	j++;
-	j++;
-	j++;
 	for(int i =0 ; i <511; i++)
 	{
 		while((SSI0_SR_R&SSI_SR_BSY)==SSI_SR_BSY){};
@@ -847,6 +844,7 @@ int DMA_rcvr_datablock(BYTE* buff, uint32_t block_size)
 	crc1=xchg_spi(0xFF); 
 	crc2=xchg_spi(0xFF);      /* Discard CRC */
 	uint32_t fifo_status4=SSI0_SR_R;
+
 
 
 	return 1;
@@ -923,9 +921,6 @@ static int DMA_xmit_datablock(const BYTE *buff, BYTE token){
 		resp1=xchg_spi(0xFF);  /* Dummy CRC */
     resp=xchg_spi(0xFF);        /* Receive data resp */
 
-		j++;
-		j++;
-		j++;
     if ((resp & 0x1F) != 0x05)    /* Function fails if the data packet was not accepted */
       return 0;
   }
@@ -964,21 +959,19 @@ DRESULT DMA_SD_Write(BYTE drv, const BYTE *buff, DWORD sector, UINT count)
 void SSI0_Handler()//will be called whenever the transfer/receive is finished
 {	
 	int j;
+	/*
 	uint32_t control10=ucControlTable[CHANNEL10_PRIMARY_INDEX+2];
 	uint32_t control11=ucControlTable[CHANNEL11_PRIMARY_INDEX+2];
 	uint32_t ssi_mask=SSI0_IM_R;
 	uint32_t fifo_status=SSI0_SR_R;
 	uint32_t dma_status=UDMA_STAT_R;
 	uint32_t wait_on_request=UDMA_WAITSTAT_R;
+	*/
 	uint32_t interrupt_status=UDMA_CHIS_R;
-	j++;
-	j++;
-	j++;
 	if( (interrupt_status&0x800)==0x800)//bit 11 interrupted
 	{
 		UDMA_ENACLR_R  = BIT11;// disable the RX and TX channel first.
-		UDMA_CHIS_R = BIT11;//clear interrupt for TX
-	
+		UDMA_CHIS_R = BIT11;//clear interrupt for TX		
 		OS_Signal(&DMA_Sema);
 	}
 	if ((interrupt_status&0x400)==0x400)//bit 10 interrupted, read is completed
@@ -988,9 +981,6 @@ void SSI0_Handler()//will be called whenever the transfer/receive is finished
 		OS_Signal(&DMA_Sema); //signal the completion of a read/write process
 	}
 	interrupt_status=UDMA_CHIS_R;
-	j++;
-	j++;
-	j++;
 	/*
 	if((ucControlTable[CHANNEL11_PRIMARY_INDEX+2]&0x7)==0)
 	{

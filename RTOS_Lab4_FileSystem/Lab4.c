@@ -113,7 +113,7 @@ uint32_t DataLost;     // data sent by Producer, but not received by Consumer
 uint32_t PIDWork;      // current number of PID calculations finished
 uint32_t FilterWork;   // number of digital filter calculations finished
 
-#define TIMESLICE 2*TIME_1MS  // thread switch time in system time units
+#define TIMESLICE 3*TIME_1MS  // thread switch time in system time units
 
 int32_t x[64],y[64];        // input and output arrays for FFT
 Sema4Type doFFT;            // set every 64 samples by DAS
@@ -518,39 +518,93 @@ int Testmain2(void){   // Testmain2
 
 uint8_t test_buffer[512];
 uint32_t read_finish_time;
-void DMA_read_thread()
+uint32_t finish_time;
+uint32_t begin_time;
+void init_thread()
 {
 	eFile_Init();
-	//DMA_SD_Read(0,test_buffer,0,1);// perform a dry first block read, because the first block read always failed in experience
-	/*
-	for(int i =0 ; i <20 ; i++)
+	begin_time=OS_MsTime();
+	OS_Kill();
+
+}
+
+void DMA_write_thread()
+{	
+	for(int i =0 ; i <2000 ; i++)
 	{
-		DMA_SD_Read(0,test_buffer,0,1);
+		DMA_SD_Write(0,test_buffer,20,1);
 	}
-	*/
-	read_finish_time=OS_Time();
+	finish_time=OS_MsTime()-begin_time;
+	UART_OutString("\r\nDMA writing finished at: ");
+	UART_OutUDec(finish_time);
+	UART_OutString("\r\n");
+	OS_Kill();
+}
+
+void normal_write_thread()
+{
+	for(int i =0 ; i <2000 ; i++)
+	{
+		eDisk_Write(0,test_buffer,20,1);
+	}
+	finish_time=OS_MsTime()-begin_time;
+	UART_OutString("\r\nnormal writing finished at: ");
+	UART_OutUDec(finish_time);
+	UART_OutString("\r\n");
+	OS_Kill();
+}
+
+void DMA_read_thread()
+{	
+	for(int i =0 ; i <2000 ; i++)
+	{
+		DMA_SD_Read(0,test_buffer,20,1);
+	}
+	finish_time=OS_MsTime()-begin_time;
+	UART_OutString("\r\nDMA read finished at: ");
+	UART_OutUDec(finish_time);
+	UART_OutString("\r\n");
 	OS_Kill();
 }
 
 void normal_read_thread()
 {
-	eDisk_Init(0);
-	//for(int i =0 ; i <20 ; i++)
-	//{
-	//	eDisk_Read(0,test_buffer,0,1);
-	//}
-	//read_finish_time=OS_Time();
+	for(int i =0 ; i <2000 ; i++)
+	{
+		eDisk_Read(0,test_buffer,20,1);
+	}
+	finish_time=OS_MsTime()-begin_time;	
+	UART_OutString("\r\nnormal read finished at: ");
+	UART_OutUDec(finish_time);
+	UART_OutString("\r\n");
 	OS_Kill();
 }
-uint32_t finish_time=0;
+uint32_t total_time=0;
 void task_thread()
 {
 	int j = 0;
-	for(int i =0 ; i<1000000; i++)
+	for(int i =0 ; i<40000000; i++)
 	{
 		j++;
 	}
-	finish_time=OS_Time();
+	total_time=OS_MsTime()-begin_time;
+	UART_OutString("\r\ntask finished at: ");
+	UART_OutUDec(total_time);
+	UART_OutString("");
+	OS_Kill();
+}
+int ram_buffer;
+void task_thread2()
+{
+	int j = 0;
+	for(int i =0 ; i<30100000; i++)
+	{
+		ram_buffer=i;
+	}
+	total_time=OS_MsTime()-begin_time;
+	UART_OutString("\r\nRAM intensive task finished at: ");
+	UART_OutUDec(total_time);
+	UART_OutString("");
 	OS_Kill();
 }
 
@@ -569,8 +623,17 @@ int DMAmain(void){        // lab 4 real main
   OS_AddPeriodicThread(&disk_timerproc,TIME_1MS,5);   // time-out routines for disk
   // create initial foreground threads
   NumCreated = 0 ;
-	NumCreated += OS_AddThread(&DMA_read_thread,128,2);
+	NumCreated += OS_AddThread(&init_thread,128,0);
+	
+	//toggle the comment to test the effectiveness of the DMA driver
+	//NumCreated += OS_AddThread(&DMA_read_thread,128,2);
+	//NumCreated += OS_AddThread(&normal_read_thread,128,2);
+	//NumCreated += OS_AddThread(&DMA_write_thread,128,2);
+	//NumCreated += OS_AddThread(&normal_write_thread,128,2);
+	
 	//NumCreated += OS_AddThread(&task_thread,128,3);
+	//NumCreated += OS_AddThread(&task_thread2,128,3);
+	
   NumCreated += OS_AddThread(&Interpreter,128,4); 
   NumCreated += OS_AddThread(&Idle,128,5);  // runs when nothing useful to do
 	
